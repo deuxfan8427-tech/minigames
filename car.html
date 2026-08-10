@@ -214,7 +214,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
 
   var state = 'idle'; // idle | playing | over
   var score = 0;
-  var player, obstacles, elapsedMs, spawnTimer, obstacleSpeed, spawnInterval;
+  var player, obstacles, elapsedMs, spawnTimer, obstacleSpeed, spawnInterval, lastSpawnLane;
 
   var CAR_COLORS = ['#ff5f6d', '#feca57', '#1dd1a1', '#48dbfb', '#a29bfe'];
 
@@ -243,7 +243,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     }
 
     if (player) {
-      player.w = laneWidth * 0.55;
+      player.w = laneWidth * 0.48;
       player.h = player.w * 1.6;
       player.y = H - player.h - 18;
       player.x = laneX[player.lane];
@@ -257,8 +257,8 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       lane: 1,
       x: 0,
       y: 0,
-      w: laneWidth * 0.55,
-      h: laneWidth * 0.55 * 1.6,
+      w: laneWidth * 0.48,
+      h: laneWidth * 0.48 * 1.6,
       targetX: 0
     };
     player.y = H - player.h - 18;
@@ -268,8 +268,9 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     obstacles = [];
     elapsedMs = 0;
     spawnTimer = 0;
-    obstacleSpeed = H * 0.28;
-    spawnInterval = 1100;
+    obstacleSpeed = H * 0.18;
+    spawnInterval = 1500;
+    lastSpawnLane = -1;
 
     state = 'playing';
     overlay.style.display = 'none';
@@ -324,8 +325,13 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   });
 
   function spawnObstacle() {
-    var lane = Math.floor(Math.random() * LANES);
-    var w = laneWidth * 0.55;
+    var choices = [];
+    for (var l = 0; l < LANES; l++) {
+      if (l !== lastSpawnLane) choices.push(l);
+    }
+    var lane = choices[Math.floor(Math.random() * choices.length)];
+    lastSpawnLane = lane;
+    var w = laneWidth * 0.48;
     var h = w * 1.6;
     obstacles.push({
       lane: lane,
@@ -351,8 +357,8 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     updateHud();
 
     var elapsedSec = elapsedMs / 1000;
-    obstacleSpeed = Math.min(H * 0.75, H * 0.28 + elapsedSec * H * 0.016);
-    spawnInterval = Math.max(420, 1100 - elapsedSec * 22);
+    obstacleSpeed = Math.min(H * 0.60, H * 0.18 + elapsedSec * H * 0.010);
+    spawnInterval = Math.max(550, 1500 - elapsedSec * 16);
 
     player.x += (player.targetX - player.x) * 0.25;
 
