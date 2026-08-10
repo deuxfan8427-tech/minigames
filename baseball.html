@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>숫자야구</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 380px;
+    color: #eee;
+    font-size: 15px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+    width: 340px;
+    max-width: calc(100vw - 20px);
+    background: #0b0b14;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    box-sizing: border-box;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #guessDisplay {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  #guessDisplay .digit {
+    width: 42px;
+    height: 52px;
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+  }
+  #guessDisplay .digit.filled {
+    border-color: #4f8cff;
+  }
+  #history {
+    height: 150px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+    background: #10101a;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 13px;
+    color: #ccc;
+  }
+  #history .row {
+    display: flex;
+    justify-content: space-between;
+  }
+  #history .row .g {
+    color: #fff;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  #history .empty {
+    color: #666;
+    text-align: center;
+  }
+  #numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  #numpad button {
+    height: 44px;
+    font-size: 18px;
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #eee;
+    border-radius: 8px;
+  }
+  #numpad button:disabled {
+    opacity: 0.3;
+  }
+  #numpad button:active:not(:disabled) {
+    background: #2c2c40;
+  }
+  #numpad button.wide {
+    grid-column: span 1;
+  }
+  #numpad #submitBtn {
+    grid-column: span 3;
+    background: #4f8cff;
+    font-weight: bold;
+    border: none;
+    color: #fff;
+  }
+  #numpad #submitBtn:disabled {
+    background: #2c3a5c;
+    color: #789;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.92);
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  #overlay h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button.mainBtn {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button.mainBtn:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>시도: <span id="tries">0</span>/10</div>
+    <div>⏱ <span id="timer">0</span>초</div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <div id="guessDisplay">
+      <div class="digit"></div>
+      <div class="digit"></div>
+      <div class="digit"></div>
+      <div class="digit"></div>
+    </div>
+    <div id="history"><div class="empty">추리 기록이 여기 표시돼요</div></div>
+    <div id="numpad">
+      <button data-d="1">1</button>
+      <button data-d="2">2</button>
+      <button data-d="3">3</button>
+      <button data-d="4">4</button>
+      <button data-d="5">5</button>
+      <button data-d="6">6</button>
+      <button data-d="7">7</button>
+      <button data-d="8">8</button>
+      <button data-d="9">9</button>
+      <button id="backBtn">⌫</button>
+      <button data-d="0">0</button>
+      <button id="clearBtn">전체삭제</button>
+      <button id="submitBtn" disabled>확인</button>
+    </div>
+    <div id="overlay">
+      <h1 id="overlayTitle">숫자야구</h1>
+      <p id="overlayMsg">서로 다른 숫자 4자리를 추리하세요 (0으로 시작 불가, 최대 10번)</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button class="mainBtn" id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 기록 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="hint">스트라이크: 숫자+위치 일치 · 볼: 숫자만 일치</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+(function() {
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var triesEl = document.getElementById('tries');
+  var timerEl = document.getElementById('timer');
+  var guessDisplay = document.getElementById('guessDisplay');
+  var digitBoxes = guessDisplay.querySelectorAll('.digit');
+  var history = document.getElementById('history');
+  var numpad = document.getElementById('numpad');
+  var submitBtn = document.getElementById('submitBtn');
+  var backBtn = document.getElementById('backBtn');
+  var clearBtn = document.getElementById('clearBtn');
+
+  var GAME_ID = 'number-baseball';
+  var LS_NAME_KEY = 'baseball_playerName';
+  var playerName = '플레이어';
+  var DIGITS = 4;
+  var MAX_TRIES = 10;
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+      }
+    } catch (e) {}
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitFinalScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+  }
+
+  var state = 'idle'; // idle | playing | over
+  var secret, current, tries, startTime, timerHandle;
+
+  function makeSecret() {
+    var digits = ['0','1','2','3','4','5','6','7','8','9'];
+    for (var i = digits.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = digits[i]; digits[i] = digits[j]; digits[j] = tmp;
+    }
+    var picked = digits.slice(0, DIGITS);
+    if (picked[0] === '0') {
+      var swapIdx = 1 + Math.floor(Math.random() * (DIGITS - 1));
+      var t = picked[0]; picked[0] = picked[swapIdx]; picked[swapIdx] = t;
+    }
+    return picked;
+  }
+
+  function updateGuessDisplay() {
+    for (var i = 0; i < digitBoxes.length; i++) {
+      var box = digitBoxes[i];
+      if (i < current.length) {
+        box.textContent = current[i];
+        box.classList.add('filled');
+      } else {
+        box.textContent = '';
+        box.classList.remove('filled');
+      }
+    }
+    submitBtn.disabled = current.length !== DIGITS;
+    var buttons = numpad.querySelectorAll('button[data-d]');
+    for (var b = 0; b < buttons.length; b++) {
+      var d = buttons[b].getAttribute('data-d');
+      buttons[b].disabled = current.indexOf(d) !== -1;
+    }
+  }
+
+  function pushDigit(d) {
+    if (state !== 'playing') return;
+    if (current.length >= DIGITS) return;
+    if (current.indexOf(d) !== -1) return;
+    current.push(d);
+    updateGuessDisplay();
+  }
+
+  function popDigit() {
+    if (state !== 'playing') return;
+    current.pop();
+    updateGuessDisplay();
+  }
+
+  function clearCurrent() {
+    if (state !== 'playing') return;
+    current = [];
+    updateGuessDisplay();
+  }
+
+  numpad.addEventListener('click', function(e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.hasAttribute('data-d')) pushDigit(btn.getAttribute('data-d'));
+  });
+  backBtn.addEventListener('click', popDigit);
+  clearBtn.addEventListener('click', clearCurrent);
+
+  window.addEventListener('keydown', function(e) {
+    if (state !== 'playing') return;
+    if (e.key >= '0' && e.key <= '9') { pushDigit(e.key); }
+    else if (e.key === 'Backspace') { popDigit(); }
+    else if (e.key === 'Enter') { submitGuess(); }
+  });
+
+  function judge(guess) {
+    var strikes = 0;
+    for (var i = 0; i < DIGITS; i++) {
+      if (guess[i] === secret[i]) strikes++;
+    }
+    var common = 0;
+    for (var j = 0; j < DIGITS; j++) {
+      if (secret.indexOf(guess[j]) !== -1) common++;
+    }
+    var balls = common - strikes;
+    return { strikes: strikes, balls: balls };
+  }
+
+  function addHistoryRow(guessStr, result) {
+    var empty = history.querySelector('.empty');
+    if (empty) empty.remove();
+    var row = document.createElement('div');
+    row.className = 'row';
+    var g = document.createElement('span');
+    g.className = 'g';
+    g.textContent = guessStr;
+    var r = document.createElement('span');
+    r.textContent = (result.strikes === 0 && result.balls === 0) ? '아웃' : (result.strikes + '스트라이크 ' + result.balls + '볼');
+    row.appendChild(g);
+    row.appendChild(r);
+    history.appendChild(row);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function submitGuess() {
+    if (state !== 'playing' || current.length !== DIGITS) return;
+    var guess = current.slice();
+    var result = judge(guess);
+    tries++;
+    triesEl.textContent = tries;
+    addHistoryRow(guess.join(''), result);
+
+    if (result.strikes === DIGITS) {
+      win();
+      return;
+    }
+    if (tries >= MAX_TRIES) {
+      lose();
+      return;
+    }
+    current = [];
+    updateGuessDisplay();
+  }
+
+  submitBtn.addEventListener('click', submitGuess);
+
+  function elapsedSeconds() {
+    return Math.floor((Date.now() - startTime) / 1000);
+  }
+
+  function stopTimer() {
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+  }
+
+  function win() {
+    state = 'over';
+    stopTimer();
+    var elapsed = elapsedSeconds();
+    var score = Math.max(0, 1000 - (tries - 1) * 80 - elapsed * 2);
+    submitFinalScore(playerName, score);
+    showOverlay('정답입니다!', tries + '번 만에 맞혔어요 (' + elapsed + '초) · 점수 ' + score, '다시 시작');
+  }
+
+  function lose() {
+    state = 'over';
+    stopTimer();
+    showOverlay('아쉬워요', '정답은 ' + secret.join('') + ' 이었어요', '다시 시작');
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  function startGame() {
+    secret = makeSecret();
+    current = [];
+    tries = 0;
+    triesEl.textContent = '0';
+    timerEl.textContent = '0';
+    history.innerHTML = '<div class="empty">추리 기록이 여기 표시돼요</div>';
+    updateGuessDisplay();
+    state = 'playing';
+    overlay.style.display = 'none';
+    startTime = Date.now();
+    stopTimer();
+    timerHandle = setInterval(function() {
+      timerEl.textContent = elapsedSeconds();
+    }, 1000);
+  }
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    startGame();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  loadName();
+  renderLeaderboard();
+  current = [];
+  updateGuessDisplay();
+  showOverlay('숫자야구', '서로 다른 숫자 4자리를 추리하세요 (0으로 시작 불가, 최대 10번)', '시작');
+})();
+</script>
+</body>
+</html>
