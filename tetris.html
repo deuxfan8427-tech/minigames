@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>테트리스</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 480px;
+    color: #eee;
+    font-size: 15px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+    gap: 8px;
+  }
+  #stage {
+    position: relative;
+  }
+  canvas {
+    background: #0b0b14;
+    display: block;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    touch-action: none;
+  }
+  #nextBox {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(10,10,20,0.7);
+    border-radius: 8px;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  #nextBox .label {
+    color: #999;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  #nextCanvas {
+    display: block;
+    box-shadow: none;
+    border-radius: 4px;
+    background: transparent;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.85);
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+  }
+  #overlay h1 {
+    font-size: 26px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    width: 100%;
+    max-width: 480px;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0 10px;
+  }
+  #controls button {
+    flex: 1;
+    max-width: 70px;
+    height: 46px;
+    font-size: 20px;
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #eee;
+    border-radius: 8px;
+  }
+  #controls button:active {
+    background: #2c2c40;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>점수: <span id="score">0</span></div>
+    <div>레벨: <span id="level">1</span></div>
+    <div>줄: <span id="lines">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="nextBox">
+      <div class="label">다음</div>
+      <canvas id="nextCanvas" width="60" height="60"></canvas>
+    </div>
+    <div id="overlay">
+      <h1 id="overlayTitle">테트리스</h1>
+      <p id="overlayMsg">블록을 쌓아 줄을 채우면 사라져요</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 기록 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="controls">
+    <button id="btnLeft">◀</button>
+    <button id="btnRotate">⟳</button>
+    <button id="btnDown">▼</button>
+    <button id="btnRight">▶</button>
+    <button id="btnDrop">⏬</button>
+  </div>
+  <div id="hint">PC: 방향키(회전 ↑) · 모바일: 아래 버튼</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+(function() {
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var nextCanvas = document.getElementById('nextCanvas');
+  var nextCtx = nextCanvas.getContext('2d');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var scoreEl = document.getElementById('score');
+  var levelEl = document.getElementById('level');
+  var linesEl = document.getElementById('lines');
+
+  var GAME_ID = 'tetris';
+  var LS_NAME_KEY = 'tetris_playerName';
+  var playerName = '플레이어';
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+      }
+    } catch (e) {}
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+  }
+
+  var COLS = 10, ROWS = 20;
+  var W, H, DPR, cell;
+
+  var SHAPES = {
+    I: { color: '#48dbfb', cells: [{x:0,y:1},{x:1,y:1},{x:2,y:1},{x:3,y:1}] },
+    O: { color: '#feca57', cells: [{x:1,y:0},{x:2,y:0},{x:1,y:1},{x:2,y:1}] },
+    T: { color: '#a29bfe', cells: [{x:1,y:0},{x:0,y:1},{x:1,y:1},{x:2,y:1}] },
+    S: { color: '#1dd1a1', cells: [{x:1,y:0},{x:2,y:0},{x:0,y:1},{x:1,y:1}] },
+    Z: { color: '#ff5f6d', cells: [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:2,y:1}] },
+    J: { color: '#4f8cff', cells: [{x:0,y:0},{x:0,y:1},{x:1,y:1},{x:2,y:1}] },
+    L: { color: '#ff9f43', cells: [{x:2,y:0},{x:0,y:1},{x:1,y:1},{x:2,y:1}] }
+  };
+  var TYPES = Object.keys(SHAPES);
+
+  var state = 'idle'; // idle | playing | over
+  var board, current, next, bag;
+  var score = 0, level = 1, totalLines = 0;
+  var gravityMs, gravityAcc, lastTime;
+
+  function resize() {
+    DPR = window.devicePixelRatio || 1;
+    var maxW = Math.min(window.innerWidth - 20, 480);
+    var maxH = window.innerHeight - 150;
+    var w = maxW;
+    var h = Math.min(maxH, w * 2);
+    w = Math.min(w, h / 2);
+
+    cell = Math.floor(w / COLS);
+    w = cell * COLS;
+    h = cell * ROWS;
+
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * DPR;
+    canvas.height = h * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    W = w; H = h;
+  }
+
+  function refillBag() {
+    bag = TYPES.slice();
+    for (var i = bag.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = bag[i]; bag[i] = bag[j]; bag[j] = tmp;
+    }
+  }
+
+  function drawFromBag() {
+    if (!bag || bag.length === 0) refillBag();
+    return bag.pop();
+  }
+
+  function makePiece(type) {
+    var shape = SHAPES[type];
+    return {
+      type: type,
+      color: shape.color,
+      cells: shape.cells.map(function(c) { return { x: c.x, y: c.y }; }),
+      boxX: 3,
+      boxY: 0
+    };
+  }
+
+  function rotateCells(cells) {
+    return cells.map(function(c) { return { x: 3 - c.y, y: c.x }; });
+  }
+
+  function isValid(cells, boxX, boxY) {
+    for (var i = 0; i < cells.length; i++) {
+      var col = boxX + cells[i].x;
+      var row = boxY + cells[i].y;
+      if (col < 0 || col >= COLS || row >= ROWS) return false;
+      if (row >= 0 && board[row][col]) return false;
+    }
+    return true;
+  }
+
+  function spawnPiece() {
+    current = next || makePiece(drawFromBag());
+    next = makePiece(drawFromBag());
+    drawNextPreview();
+    if (!isValid(current.cells, current.boxX, current.boxY)) {
+      gameOver();
+    }
+  }
+
+  function startGame() {
+    board = [];
+    for (var r = 0; r < ROWS; r++) board.push(new Array(COLS).fill(null));
+    score = 0; level = 1; totalLines = 0;
+    updateHud();
+    bag = null;
+    next = null;
+    gravityMs = 800;
+    gravityAcc = 0;
+    lastTime = 0;
+    spawnPiece();
+    state = 'playing';
+    overlay.style.display = 'none';
+  }
+
+  function gameOver() {
+    state = 'over';
+    submitScore(playerName, score);
+    showOverlay('게임 오버', '점수: ' + score + '  ·  다시 도전해보세요', '다시 시작');
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
+    linesEl.textContent = totalLines;
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  function tryMove(dx, dy) {
+    if (state !== 'playing') return false;
+    var nx = current.boxX + dx, ny = current.boxY + dy;
+    if (isValid(current.cells, nx, ny)) {
+      current.boxX = nx;
+      current.boxY = ny;
+      return true;
+    }
+    return false;
+  }
+
+  function tryRotate() {
+    if (state !== 'playing') return;
+    var rotated = rotateCells(current.cells);
+    var kicks = [0, -1, 1, -2, 2];
+    for (var i = 0; i < kicks.length; i++) {
+      if (isValid(rotated, current.boxX + kicks[i], current.boxY)) {
+        current.cells = rotated;
+        current.boxX += kicks[i];
+        return;
+      }
+    }
+  }
+
+  function lockPiece() {
+    for (var i = 0; i < current.cells.length; i++) {
+      var col = current.boxX + current.cells[i].x;
+      var row = current.boxY + current.cells[i].y;
+      if (row >= 0) board[row][col] = current.color;
+    }
+    clearLines();
+    spawnPiece();
+  }
+
+  function clearLines() {
+    var cleared = 0;
+    for (var r = ROWS - 1; r >= 0; r--) {
+      if (board[r].every(function(c) { return c; })) {
+        board.splice(r, 1);
+        board.unshift(new Array(COLS).fill(null));
+        cleared++;
+        r++;
+      }
+    }
+    if (cleared > 0) {
+      var table = [0, 10, 30, 50, 80];
+      score += table[cleared] * level;
+      totalLines += cleared;
+      level = 1 + Math.floor(totalLines / 10);
+      gravityMs = Math.max(120, 800 - (level - 1) * 70);
+      updateHud();
+    }
+  }
+
+  function softDrop() {
+    if (!tryMove(0, 1)) {
+      lockPiece();
+    }
+    gravityAcc = 0;
+  }
+
+  function hardDrop() {
+    if (state !== 'playing') return;
+    var dist = 0;
+    while (tryMove(0, 1)) dist++;
+    score += dist * level;
+    updateHud();
+    lockPiece();
+    gravityAcc = 0;
+  }
+
+  function moveLeft() { tryMove(-1, 0); }
+  function moveRight() { tryMove(1, 0); }
+
+  window.addEventListener('keydown', function(e) {
+    if (state !== 'playing') return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); moveLeft(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); moveRight(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); softDrop(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); tryRotate(); }
+    else if (e.key === ' ') { e.preventDefault(); hardDrop(); }
+  });
+
+  document.getElementById('btnLeft').addEventListener('click', moveLeft);
+  document.getElementById('btnRight').addEventListener('click', moveRight);
+  document.getElementById('btnRotate').addEventListener('click', tryRotate);
+  document.getElementById('btnDown').addEventListener('click', softDrop);
+  document.getElementById('btnDrop').addEventListener('click', hardDrop);
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    startGame();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+
+  function drawCell(c, px, py, size, color) {
+    roundRect(c, px + 1, py + 1, size - 2, size - 2, 3);
+    c.fillStyle = color;
+    c.fill();
+  }
+
+  function drawNextPreview() {
+    nextCtx.clearRect(0, 0, 60, 60);
+    if (!next) return;
+    var s = 14;
+    var offX = (60 - s * 4) / 2;
+    for (var i = 0; i < next.cells.length; i++) {
+      var cx = offX + next.cells[i].x * s;
+      var cy = 8 + next.cells[i].y * s;
+      drawCell(nextCtx, cx, cy, s, next.color);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    if (!board) return;
+
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        if (board[r][c]) drawCell(ctx, c * cell, r * cell, cell, board[r][c]);
+      }
+    }
+
+    if (state === 'playing' && current) {
+      for (var i = 0; i < current.cells.length; i++) {
+        var col = current.boxX + current.cells[i].x;
+        var row = current.boxY + current.cells[i].y;
+        if (row >= 0) drawCell(ctx, col * cell, row * cell, cell, current.color);
+      }
+    }
+  }
+
+  function loop(ts) {
+    if (!lastTime) lastTime = ts;
+    var dt = ts - lastTime;
+    lastTime = ts;
+    if (state === 'playing') {
+      gravityAcc += dt;
+      while (gravityAcc >= gravityMs) {
+        gravityAcc -= gravityMs;
+        if (!tryMove(0, 1)) {
+          lockPiece();
+          gravityAcc = 0;
+          break;
+        }
+      }
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  loadName();
+  renderLeaderboard();
+  showOverlay('테트리스', '블록을 쌓아 줄을 채우면 사라져요', '시작');
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
