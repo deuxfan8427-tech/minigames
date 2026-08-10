@@ -115,11 +115,19 @@
 
   var W, H, DPR;
   var ROWS = 5, COLS = 8;
+  var WIN_LEVEL = 10;
   var BRICK_COLORS = ['#ff5f6d', '#ff9f43', '#feca57', '#1dd1a1', '#48dbfb', '#5f6dff'];
+  var PATTERNS = [
+    ['########', '########', '########', '########', '########'],
+    ['#.#.#.#.', '.#.#.#.#', '#.#.#.#.', '.#.#.#.#', '#.#.#.#.'],
+    ['...##...', '..####..', '.######.', '..####..', '...##...'],
+    ['########', '.######.', '..####..', '...##...', '........'],
+    ['##....##', '###..###', '########', '###..###', '##....##']
+  ];
 
   var state = 'idle'; // idle | playing | won | over
   var score = 0, level = 1, lives = 3;
-  var paddle, ball, bricks;
+  var paddle, balls, bricks;
 
   function resize() {
     DPR = window.devicePixelRatio || 1;
@@ -165,27 +173,49 @@
   }
 
   function makeBricks() {
+    var pattern = PATTERNS[(level - 1) % PATTERNS.length];
+    ROWS = pattern.length;
     bricks = [];
     for (var r = 0; r < ROWS; r++) {
       var row = [];
+      var rowStr = pattern[r];
       for (var c = 0; c < COLS; c++) {
-        row.push({ alive: true, color: BRICK_COLORS[r % BRICK_COLORS.length] });
+        if (rowStr[c] === '#') {
+          row.push({ alive: true, color: BRICK_COLORS[r % BRICK_COLORS.length] });
+        } else {
+          row.push(null);
+        }
       }
       bricks.push(row);
     }
   }
 
-  function resetBallAndPaddle() {
+  function ballCountForLevel(lv) {
+    return Math.min(3, 1 + Math.floor((lv - 1) / 2));
+  }
+
+  function spawnBalls() {
+    var speed = (5.0 + (level - 1) * 0.65) * (H / 640);
+    var count = ballCountForLevel(level);
+    var r = Math.max(5, W * 0.014);
+    balls = [];
+    for (var i = 0; i < count; i++) {
+      var dirX = (i % 2 === 0) ? -1 : 1;
+      var spread = (i - (count - 1) / 2) * 14;
+      balls.push({
+        x: W / 2 + spread,
+        y: paddle.y - 10,
+        r: r,
+        vx: speed * dirX * (0.5 + Math.random() * 0.3),
+        vy: -speed
+      });
+    }
+  }
+
+  function resetRound() {
     var pw = W * 0.2, ph = Math.max(10, H * 0.018);
     paddle = { x: (W - pw) / 2, y: H - ph - 14, w: pw, h: ph, targetX: (W - pw) / 2 };
-    var speed = (4.2 + (level - 1) * 0.5) * (H / 640);
-    ball = {
-      x: W / 2,
-      y: paddle.y - 10,
-      r: Math.max(5, W * 0.014),
-      vx: speed * (Math.random() < 0.5 ? -1 : 1) * 0.6,
-      vy: -speed
-    };
+    spawnBalls();
   }
 
   function startGame() {
@@ -193,7 +223,7 @@
     updateHud();
     makeBricks();
     layoutBricks();
-    resetBallAndPaddle();
+    resetRound();
     state = 'playing';
     overlay.style.display = 'none';
   }
@@ -203,7 +233,7 @@
     updateHud();
     makeBricks();
     layoutBricks();
-    resetBallAndPaddle();
+    resetRound();
   }
 
   function loseLife() {
@@ -213,7 +243,7 @@
       state = 'over';
       showOverlay('게임 오버', '점수: ' + score + '  ·  다시 도전해보세요', '다시 시작');
     } else {
-      resetBallAndPaddle();
+      resetRound();
     }
   }
 
@@ -290,65 +320,72 @@
     paddle.x += (paddle.targetX - paddle.x) * followSpeed;
     paddle.x = Math.min(Math.max(paddle.x, 0), W - paddle.w);
 
-    // ball movement
-    ball.x += ball.vx;
-    ball.y += ball.vy;
+    // balls movement
+    for (var i = balls.length - 1; i >= 0; i--) {
+      var ball = balls[i];
+      ball.x += ball.vx;
+      ball.y += ball.vy;
 
-    if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx *= -1; }
-    if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx *= -1; }
-    if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy *= -1; }
+      if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx *= -1; }
+      if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx *= -1; }
+      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy *= -1; }
 
-    // paddle collision
-    if (ball.vy > 0 &&
-        ball.y + ball.r >= paddle.y &&
-        ball.y + ball.r <= paddle.y + paddle.h + Math.abs(ball.vy) &&
-        ball.x >= paddle.x - ball.r &&
-        ball.x <= paddle.x + paddle.w + ball.r) {
-      ball.y = paddle.y - ball.r;
-      var hitPos = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2); // -1..1
-      var speed = Math.hypot(ball.vx, ball.vy);
-      var maxAngle = Math.PI * 0.4;
-      var angle = hitPos * maxAngle;
-      ball.vx = speed * Math.sin(angle);
-      ball.vy = -Math.abs(speed * Math.cos(angle));
-    }
+      // paddle collision
+      if (ball.vy > 0 &&
+          ball.y + ball.r >= paddle.y &&
+          ball.y + ball.r <= paddle.y + paddle.h + Math.abs(ball.vy) &&
+          ball.x >= paddle.x - ball.r &&
+          ball.x <= paddle.x + paddle.w + ball.r) {
+        ball.y = paddle.y - ball.r;
+        var hitPos = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2); // -1..1
+        var speed = Math.hypot(ball.vx, ball.vy);
+        var maxAngle = Math.PI * 0.4;
+        var angle = hitPos * maxAngle;
+        ball.vx = speed * Math.sin(angle);
+        ball.vy = -Math.abs(speed * Math.cos(angle));
+      }
 
-    // brick collision
-    outer:
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var b = bricks[r][c];
-        if (!b || !b.alive) continue;
-        if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
-            ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
-          b.alive = false;
-          score += 10;
-          updateHud();
+      // brick collision
+      outer:
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var b = bricks[r][c];
+          if (!b || !b.alive) continue;
+          if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+              ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+            b.alive = false;
+            score += 10;
+            updateHud();
 
-          var overlapLeft = (ball.x + ball.r) - b.x;
-          var overlapRight = (b.x + b.w) - (ball.x - ball.r);
-          var overlapTop = (ball.y + ball.r) - b.y;
-          var overlapBottom = (b.y + b.h) - (ball.y - ball.r);
-          var minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+            var overlapLeft = (ball.x + ball.r) - b.x;
+            var overlapRight = (b.x + b.w) - (ball.x - ball.r);
+            var overlapTop = (ball.y + ball.r) - b.y;
+            var overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+            var minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
-          if (minOverlap === overlapTop || minOverlap === overlapBottom) {
-            ball.vy *= -1;
-          } else {
-            ball.vx *= -1;
+            if (minOverlap === overlapTop || minOverlap === overlapBottom) {
+              ball.vy *= -1;
+            } else {
+              ball.vx *= -1;
+            }
+            break outer;
           }
-          break outer;
         }
+      }
+
+      // ball falls below paddle
+      if (ball.y - ball.r > H) {
+        balls.splice(i, 1);
       }
     }
 
-    // ball falls below paddle
-    if (ball.y - ball.r > H) {
+    if (balls.length === 0) {
       loseLife();
       return;
     }
 
     if (checkWin()) {
-      if (level >= 5) {
+      if (level >= WIN_LEVEL) {
         state = 'won';
         showOverlay('클리어!', '최종 점수: ' + score, '다시 시작');
       } else {
@@ -376,11 +413,13 @@
     roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, paddle.h / 2);
     ctx.fill();
 
-    // ball
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    // balls
     ctx.fillStyle = '#ffffff';
-    ctx.fill();
+    for (var i = 0; i < balls.length; i++) {
+      ctx.beginPath();
+      ctx.arc(balls[i].x, balls[i].y, balls[i].r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -403,7 +442,7 @@
   resize();
   makeBricks();
   layoutBricks();
-  resetBallAndPaddle();
+  resetRound();
   draw();
   showOverlay('벽돌깨기', '패들을 움직여 공을 튕겨 벽돌을 모두 깨보세요', '시작');
   requestAnimationFrame(loop);
