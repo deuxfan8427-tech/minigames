@@ -224,6 +224,22 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   var state = 'idle'; // idle | playing | won | over
   var score = 0, level = 1, lives = 3;
   var paddle, balls, bricks;
+  var items, paddleBaseW;
+  var paddleSizeFactor = 1, paddleSizeTimer = 0;
+  var ballSpeedFactor = 1, ballSpeedTimer = 0;
+  var pierceTimer = 0;
+
+  var ITEM_META = {
+    paddleGrow: { label: 'L+', color: '#1dd1a1' },
+    paddleShrink: { label: 'L-', color: '#ff5f6d' },
+    ballSlow: { label: 'V-', color: '#48dbfb' },
+    ballFast: { label: 'V+', color: '#ff9f43' },
+    multiBall: { label: 'x3', color: '#feca57' },
+    pierce: { label: 'P', color: '#a29bfe' }
+  };
+  var ITEM_GOOD_POOL = ['paddleGrow', 'ballSlow', 'multiBall', 'pierce'];
+  var ITEM_BAD_POOL = ['paddleShrink', 'ballFast'];
+  var ITEM_DURATION = 8000;
 
   function resize() {
     DPR = window.devicePixelRatio || 1;
@@ -242,7 +258,8 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     W = w; H = h;
     layoutBricks();
     if (paddle) {
-      paddle.w = W * 0.2;
+      paddleBaseW = W * 0.2;
+      paddle.w = paddleBaseW * paddleSizeFactor;
       paddle.h = Math.max(10, H * 0.018);
       paddle.y = H - paddle.h - 14;
       paddle.x = Math.min(Math.max(paddle.x, 0), W - paddle.w);
@@ -309,9 +326,50 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   }
 
   function resetRound() {
-    var pw = W * 0.2, ph = Math.max(10, H * 0.018);
+    paddleSizeFactor = 1; paddleSizeTimer = 0;
+    ballSpeedFactor = 1; ballSpeedTimer = 0;
+    pierceTimer = 0;
+    items = [];
+
+    paddleBaseW = W * 0.2;
+    var pw = paddleBaseW, ph = Math.max(10, H * 0.018);
     paddle = { x: (W - pw) / 2, y: H - ph - 14, w: pw, h: ph, targetX: (W - pw) / 2 };
     spawnBalls();
+  }
+
+  function pickItemType() {
+    var isGood = Math.random() < 0.7;
+    var pool = isGood ? ITEM_GOOD_POOL : ITEM_BAD_POOL;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function spawnItem(x, y) {
+    items.push({ x: x, y: y, type: pickItemType(), vy: H * 0.006 });
+  }
+
+  function addExtraBalls() {
+    var src = balls[0];
+    if (!src) return;
+    var speed = Math.hypot(src.vx, src.vy) || (10 * (H / 640));
+    while (balls.length < 3) {
+      var angle = Math.random() * 0.6 - 0.3;
+      balls.push({
+        x: src.x,
+        y: src.y,
+        r: src.r,
+        vx: speed * Math.sin(angle),
+        vy: -Math.abs(speed * Math.cos(angle))
+      });
+    }
+  }
+
+  function applyItem(type) {
+    if (type === 'paddleGrow') { paddleSizeFactor = 1.5; paddleSizeTimer = ITEM_DURATION; }
+    else if (type === 'paddleShrink') { paddleSizeFactor = 0.6; paddleSizeTimer = ITEM_DURATION; }
+    else if (type === 'ballSlow') { ballSpeedFactor = 0.6; ballSpeedTimer = ITEM_DURATION; }
+    else if (type === 'ballFast') { ballSpeedFactor = 1.5; ballSpeedTimer = ITEM_DURATION; }
+    else if (type === 'pierce') { pierceTimer = ITEM_DURATION; }
+    else if (type === 'multiBall') { addExtraBalls(); }
   }
 
   function startGame() {
@@ -414,22 +472,49 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     if (e.key === 'Enter') startBtn.click();
   });
 
-  function update() {
+  function update(dt) {
     if (state !== 'playing') return;
+
+    if (paddleSizeTimer > 0) {
+      paddleSizeTimer -= dt;
+      if (paddleSizeTimer <= 0) { paddleSizeTimer = 0; paddleSizeFactor = 1; }
+    }
+    if (ballSpeedTimer > 0) {
+      ballSpeedTimer -= dt;
+      if (ballSpeedTimer <= 0) { ballSpeedTimer = 0; ballSpeedFactor = 1; }
+    }
+    if (pierceTimer > 0) {
+      pierceTimer -= dt;
+      if (pierceTimer < 0) pierceTimer = 0;
+    }
 
     // paddle movement
     var followSpeed = 0.35;
+    paddle.w = paddleBaseW * paddleSizeFactor;
     if (keys['ArrowLeft']) paddle.targetX = paddle.x - 12;
     if (keys['ArrowRight']) paddle.targetX = paddle.x + 12;
     paddle.targetX = Math.min(Math.max(paddle.targetX, 0), W - paddle.w);
     paddle.x += (paddle.targetX - paddle.x) * followSpeed;
     paddle.x = Math.min(Math.max(paddle.x, 0), W - paddle.w);
 
+    // falling items
+    for (var k = items.length - 1; k >= 0; k--) {
+      var it = items[k];
+      it.y += it.vy;
+      if (it.y + 12 >= paddle.y && it.y - 12 <= paddle.y + paddle.h &&
+          it.x >= paddle.x - 12 && it.x <= paddle.x + paddle.w + 12) {
+        applyItem(it.type);
+        items.splice(k, 1);
+        continue;
+      }
+      if (it.y - 12 > H) items.splice(k, 1);
+    }
+
     // balls movement
     for (var i = balls.length - 1; i >= 0; i--) {
       var ball = balls[i];
-      ball.x += ball.vx;
-      ball.y += ball.vy;
+      ball.x += ball.vx * ballSpeedFactor;
+      ball.y += ball.vy * ballSpeedFactor;
 
       if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx *= -1; }
       if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx *= -1; }
@@ -438,7 +523,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       // paddle collision
       if (ball.vy > 0 &&
           ball.y + ball.r >= paddle.y &&
-          ball.y + ball.r <= paddle.y + paddle.h + Math.abs(ball.vy) &&
+          ball.y + ball.r <= paddle.y + paddle.h + Math.abs(ball.vy * ballSpeedFactor) &&
           ball.x >= paddle.x - ball.r &&
           ball.x <= paddle.x + paddle.w + ball.r) {
         ball.y = paddle.y - ball.r;
@@ -461,17 +546,20 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
             b.alive = false;
             score += 10;
             updateHud();
+            if (Math.random() < 0.25) spawnItem(b.x + b.w / 2, b.y + b.h / 2);
 
-            var overlapLeft = (ball.x + ball.r) - b.x;
-            var overlapRight = (b.x + b.w) - (ball.x - ball.r);
-            var overlapTop = (ball.y + ball.r) - b.y;
-            var overlapBottom = (b.y + b.h) - (ball.y - ball.r);
-            var minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+            if (pierceTimer <= 0) {
+              var overlapLeft = (ball.x + ball.r) - b.x;
+              var overlapRight = (b.x + b.w) - (ball.x - ball.r);
+              var overlapTop = (ball.y + ball.r) - b.y;
+              var overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+              var minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
-            if (minOverlap === overlapTop || minOverlap === overlapBottom) {
-              ball.vy *= -1;
-            } else {
-              ball.vx *= -1;
+              if (minOverlap === overlapTop || minOverlap === overlapBottom) {
+                ball.vy *= -1;
+              } else {
+                ball.vx *= -1;
+              }
             }
             break outer;
           }
@@ -520,11 +608,27 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     ctx.fill();
 
     // balls
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = pierceTimer > 0 ? '#ffe066' : '#ffffff';
     for (var i = 0; i < balls.length; i++) {
       ctx.beginPath();
       ctx.arc(balls[i].x, balls[i].y, balls[i].r, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // falling items
+    if (items) {
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k];
+        var meta = ITEM_META[it.type];
+        roundRect(ctx, it.x - 13, it.y - 13, 26, 26, 6);
+        ctx.fillStyle = meta.color;
+        ctx.fill();
+        ctx.fillStyle = '#0b0b14';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(meta.label, it.x, it.y + 1);
+      }
     }
   }
 
@@ -538,8 +642,12 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     ctx.closePath();
   }
 
-  function loop() {
-    update();
+  var lastTime = 0;
+  function loop(ts) {
+    if (!lastTime) lastTime = ts;
+    var dt = ts - lastTime;
+    lastTime = ts;
+    update(dt);
     draw();
     requestAnimationFrame(loop);
   }
