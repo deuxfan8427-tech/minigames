@@ -194,8 +194,8 @@
     </div>
   </div>
   <div id="controls">
-    <button id="btnLeft">◀</button>
     <button id="btnRotate">⟳</button>
+    <button id="btnLeft">◀</button>
     <button id="btnDown">▼</button>
     <button id="btnRight">▶</button>
     <button id="btnDrop">⏬</button>
@@ -361,7 +361,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     updateHud();
     bag = null;
     next = null;
-    gravityMs = 800;
+    gravityMs = 615;
     gravityAcc = 0;
     lastTime = 0;
     spawnPiece();
@@ -437,13 +437,15 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       score += table[cleared] * level;
       totalLines += cleared;
       level = 1 + Math.floor(totalLines / 10);
-      gravityMs = Math.max(120, 800 - (level - 1) * 70);
+      gravityMs = Math.max(100, 615 - (level - 1) * 85);
       updateHud();
     }
   }
 
   function softDrop() {
-    if (!tryMove(0, 1)) {
+    var moved = tryMove(0, 1);
+    if (moved) moved = tryMove(0, 1);
+    if (!moved) {
       lockPiece();
     }
     gravityAcc = 0;
