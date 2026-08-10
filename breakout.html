@@ -139,7 +139,7 @@
       <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
       <button id="startBtn">시작</button>
       <div id="leaderboard">
-        <h2>최고 기록 TOP 5</h2>
+        <h2>최고 기록 TOP 10</h2>
         <ol id="leaderboardList"></ol>
       </div>
     </div>
@@ -147,7 +147,8 @@
   <div id="hint">PC: 마우스 이동 / 좌우 화살표 · 모바일: 좌우 드래그</div>
 </div>
 
-<script>
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -161,8 +162,8 @@
   var levelEl = document.getElementById('level');
   var livesEl = document.getElementById('lives');
 
+  var GAME_ID = 'breakout';
   var LS_NAME_KEY = 'breakout_playerName';
-  var LS_SCORES_KEY = 'breakout_highscores';
   var playerName = '플레이어';
 
   function loadName() {
@@ -175,47 +176,37 @@
     } catch (e) {}
   }
 
-  function loadScores() {
-    try {
-      var raw = localStorage.getItem(LS_SCORES_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function saveScores(list) {
-    try { localStorage.setItem(LS_SCORES_KEY, JSON.stringify(list)); } catch (e) {}
-  }
-
   function renderLeaderboard() {
-    var list = loadScores();
     leaderboardList.innerHTML = '';
-    if (list.length === 0) {
-      var empty = document.createElement('li');
-      empty.textContent = '아직 기록이 없어요';
-      leaderboardList.appendChild(empty);
-      return;
-    }
-    for (var i = 0; i < list.length; i++) {
-      var li = document.createElement('li');
-      var rank = document.createElement('span');
-      rank.textContent = (i + 1) + '. ' + list[i].name;
-      var pts = document.createElement('span');
-      pts.textContent = list[i].score;
-      li.appendChild(rank);
-      li.appendChild(pts);
-      leaderboardList.appendChild(li);
-    }
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
   }
 
   function submitScore(name, finalScore) {
-    var list = loadScores();
-    list.push({ name: name, score: finalScore });
-    list.sort(function(a, b) { return b.score - a.score; });
-    list = list.slice(0, 5);
-    saveScores(list);
-    renderLeaderboard();
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
   }
 
   var W, H, DPR;
