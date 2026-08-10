@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>자동차 피하기</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 480px;
+    color: #eee;
+    font-size: 16px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+  }
+  canvas {
+    background: #2a2a35;
+    display: block;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    touch-action: none;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.85);
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+  }
+  #overlay h1 {
+    font-size: 26px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>점수: <span id="score">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="overlay">
+      <h1 id="overlayTitle">자동차 피하기</h1>
+      <p id="overlayMsg">좌우로 차선을 바꿔 장애물을 피하세요</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 기록 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="hint">PC: 좌우 화살표 · 모바일: 화면 좌/우 탭</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+(function() {
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var scoreEl = document.getElementById('score');
+
+  var GAME_ID = 'car-dodge';
+  var LS_NAME_KEY = 'car_playerName';
+  var playerName = '플레이어';
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+      }
+    } catch (e) {}
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+  }
+
+  var W, H, DPR;
+  var LANES = 3;
+  var laneX = [];
+  var laneWidth;
+  var roadLeft;
+
+  var state = 'idle'; // idle | playing | over
+  var score = 0;
+  var player, obstacles, elapsedMs, spawnTimer, obstacleSpeed, spawnInterval;
+
+  var CAR_COLORS = ['#ff5f6d', '#feca57', '#1dd1a1', '#48dbfb', '#a29bfe'];
+
+  function resize() {
+    DPR = window.devicePixelRatio || 1;
+    var maxW = Math.min(window.innerWidth - 20, 480);
+    var maxH = window.innerHeight - 90;
+    var w = maxW;
+    var h = Math.min(maxH, w * 1.5);
+    w = Math.min(w, h / 1.5);
+
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * DPR;
+    canvas.height = h * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    W = w; H = h;
+
+    var roadWidth = W * 0.86;
+    roadLeft = (W - roadWidth) / 2;
+    laneWidth = roadWidth / LANES;
+    laneX = [];
+    for (var i = 0; i < LANES; i++) {
+      laneX.push(roadLeft + laneWidth * i + laneWidth / 2);
+    }
+
+    if (player) {
+      player.w = laneWidth * 0.55;
+      player.h = player.w * 1.6;
+      player.y = H - player.h - 18;
+      player.x = laneX[player.lane];
+    }
+  }
+
+  function startGame() {
+    score = 0;
+    updateHud();
+    player = {
+      lane: 1,
+      x: 0,
+      y: 0,
+      w: laneWidth * 0.55,
+      h: laneWidth * 0.55 * 1.6,
+      targetX: 0
+    };
+    player.y = H - player.h - 18;
+    player.x = laneX[player.lane];
+    player.targetX = player.x;
+
+    obstacles = [];
+    elapsedMs = 0;
+    spawnTimer = 0;
+    obstacleSpeed = H * 0.28;
+    spawnInterval = 1100;
+
+    state = 'playing';
+    overlay.style.display = 'none';
+  }
+
+  function gameOver() {
+    state = 'over';
+    submitScore(playerName, score);
+    showOverlay('게임 오버', '점수: ' + score + '  ·  다시 도전해보세요', '다시 시작');
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  function changeLane(delta) {
+    if (state !== 'playing') return;
+    player.lane = Math.min(LANES - 1, Math.max(0, player.lane + delta));
+    player.targetX = laneX[player.lane];
+  }
+
+  window.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); changeLane(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); changeLane(1); }
+  });
+
+  canvas.addEventListener('touchstart', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var t = e.touches[0];
+    var relX = t.clientX - rect.left;
+    changeLane(relX < rect.width / 2 ? -1 : 1);
+    e.preventDefault();
+  }, { passive: false });
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    startGame();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  function spawnObstacle() {
+    var lane = Math.floor(Math.random() * LANES);
+    var w = laneWidth * 0.55;
+    var h = w * 1.6;
+    obstacles.push({
+      lane: lane,
+      x: laneX[lane],
+      y: -h,
+      w: w,
+      h: h,
+      color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)],
+      passed: false
+    });
+  }
+
+  function rectsOverlap(a, b) {
+    return Math.abs(a.x - b.x) < (a.w + b.w) / 2 &&
+           Math.abs(a.y - b.y) < (a.h + b.h) / 2;
+  }
+
+  function update(dt) {
+    if (state !== 'playing') return;
+
+    elapsedMs += dt;
+    score = Math.floor(elapsedMs / 100);
+    updateHud();
+
+    var elapsedSec = elapsedMs / 1000;
+    obstacleSpeed = Math.min(H * 0.75, H * 0.28 + elapsedSec * H * 0.016);
+    spawnInterval = Math.max(420, 1100 - elapsedSec * 22);
+
+    player.x += (player.targetX - player.x) * 0.25;
+
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnObstacle();
+      spawnTimer = spawnInterval;
+    }
+
+    for (var i = obstacles.length - 1; i >= 0; i--) {
+      var o = obstacles[i];
+      o.y += obstacleSpeed * (dt / 1000);
+
+      if (rectsOverlap(player, o)) {
+        gameOver();
+        return;
+      }
+
+      if (o.y - o.h / 2 > H) {
+        obstacles.splice(i, 1);
+      }
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawCar(cx, cy, w, h, color) {
+    roundRect(ctx, cx - w / 2, cy - h / 2, w, h, w * 0.25);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    roundRect(ctx, cx - w / 2 + w * 0.15, cy - h / 2 + h * 0.12, w * 0.7, h * 0.28, w * 0.15);
+    ctx.fill();
+  }
+
+  var laneLineOffset = 0;
+
+  function draw(dt) {
+    ctx.clearRect(0, 0, W, H);
+
+    var roadWidth = laneWidth * LANES;
+    ctx.fillStyle = '#1c1c26';
+    ctx.fillRect(roadLeft, 0, roadWidth, H);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([14, 14]);
+    laneLineOffset = (laneLineOffset + obstacleSpeed * (dt / 1000)) % 28;
+    for (var i = 1; i < LANES; i++) {
+      var lx = roadLeft + laneWidth * i;
+      ctx.beginPath();
+      ctx.moveTo(lx, -28 + laneLineOffset);
+      ctx.lineTo(lx, H);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    if (state === 'idle') return;
+
+    for (var j = 0; j < obstacles.length; j++) {
+      var o = obstacles[j];
+      drawCar(o.x, o.y, o.w, o.h, o.color);
+    }
+
+    drawCar(player.x, player.y, player.w, player.h, '#4f8cff');
+  }
+
+  var lastTime = 0;
+  function loop(ts) {
+    if (!lastTime) lastTime = ts;
+    var dt = ts - lastTime;
+    lastTime = ts;
+    update(dt);
+    draw(dt);
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  loadName();
+  renderLeaderboard();
+  showOverlay('자동차 피하기', '좌우로 차선을 바꿔 장애물을 피하세요', '시작');
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
