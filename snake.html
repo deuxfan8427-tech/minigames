@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>스네이크</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 480px;
+    color: #eee;
+    font-size: 16px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+  }
+  canvas {
+    background: #0b0b14;
+    display: block;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    touch-action: none;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.85);
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+  }
+  #overlay h1 {
+    font-size: 26px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>점수: <span id="score">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="overlay">
+      <h1 id="overlayTitle">스네이크</h1>
+      <p id="overlayMsg">방향키/스와이프로 뱀을 조종해 먹이를 먹으세요</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 기록 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="hint">PC: 방향키 · 모바일: 스와이프</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+(function() {
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var scoreEl = document.getElementById('score');
+
+  var GAME_ID = 'snake';
+  var LS_NAME_KEY = 'snake_playerName';
+  var playerName = '플레이어';
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+      }
+    } catch (e) {}
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+  }
+
+  var W, H, DPR, cell;
+  var COLS = 14;
+  var ROWS = 18;
+  var state = 'idle'; // idle | playing | over
+  var score = 0;
+  var snake, dir, nextDir, food, tickMs;
+
+  function resize() {
+    DPR = window.devicePixelRatio || 1;
+    var maxW = Math.min(window.innerWidth - 20, 480);
+    var maxH = window.innerHeight - 90;
+    var w = maxW;
+    var h = Math.min(maxH, w * 1.3);
+    w = Math.min(w, h / 1.3);
+
+    cell = Math.floor(w / COLS);
+    w = cell * COLS;
+    ROWS = Math.floor(h / cell);
+    h = cell * ROWS;
+
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * DPR;
+    canvas.height = h * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    W = w; H = h;
+  }
+
+  function placeFood() {
+    var cell2;
+    do {
+      cell2 = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+    } while (snake.some(function(s) { return s.x === cell2.x && s.y === cell2.y; }));
+    food = cell2;
+  }
+
+  function startGame() {
+    score = 0;
+    updateHud();
+    var startX = Math.floor(COLS / 2), startY = Math.floor(ROWS / 2);
+    snake = [
+      { x: startX, y: startY },
+      { x: startX - 1, y: startY },
+      { x: startX - 2, y: startY }
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    tickMs = 160;
+    placeFood();
+    state = 'playing';
+    overlay.style.display = 'none';
+  }
+
+  function gameOver() {
+    state = 'over';
+    submitScore(playerName, score);
+    showOverlay('게임 오버', '점수: ' + score + '  ·  다시 도전해보세요', '다시 시작');
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  function setDirection(d) {
+    if (d.x === -dir.x && d.y === -dir.y && snake.length > 1) return;
+    nextDir = d;
+  }
+
+  var keyMap = {
+    ArrowUp: { x: 0, y: -1 },
+    ArrowDown: { x: 0, y: 1 },
+    ArrowLeft: { x: -1, y: 0 },
+    ArrowRight: { x: 1, y: 0 }
+  };
+  window.addEventListener('keydown', function(e) {
+    var d = keyMap[e.key];
+    if (!d) return;
+    e.preventDefault();
+    setDirection(d);
+  });
+
+  var touchStartX = 0, touchStartY = 0;
+  canvas.addEventListener('touchstart', function(e) {
+    var t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', function(e) {
+    var t = e.changedTouches[0];
+    var dx = t.clientX - touchStartX;
+    var dy = t.clientY - touchStartY;
+    if (Math.abs(dx) < 18 && Math.abs(dy) < 18) { e.preventDefault(); return; }
+    var d;
+    if (Math.abs(dx) > Math.abs(dy)) d = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+    else d = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+    setDirection(d);
+    e.preventDefault();
+  }, { passive: false });
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    startGame();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  function tick() {
+    dir = nextDir;
+    var head = snake[0];
+    var newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+    if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+      gameOver();
+      return;
+    }
+    for (var i = 0; i < snake.length; i++) {
+      if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+        gameOver();
+        return;
+      }
+    }
+
+    snake.unshift(newHead);
+
+    if (newHead.x === food.x && newHead.y === food.y) {
+      score += 10;
+      updateHud();
+      placeFood();
+      tickMs = Math.max(70, 160 - Math.floor(score / 10) * 4);
+    } else {
+      snake.pop();
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    if (state === 'idle') return;
+
+    ctx.fillStyle = '#ff5f6d';
+    roundRect(ctx, food.x * cell + 2, food.y * cell + 2, cell - 4, cell - 4, 4);
+    ctx.fill();
+
+    for (var i = 0; i < snake.length; i++) {
+      ctx.fillStyle = i === 0 ? '#7fe0a8' : '#4f8cff';
+      roundRect(ctx, snake[i].x * cell + 1, snake[i].y * cell + 1, cell - 2, cell - 2, 3);
+      ctx.fill();
+    }
+  }
+
+  var lastTime = 0, acc = 0;
+  function loop(ts) {
+    if (!lastTime) lastTime = ts;
+    var dt = ts - lastTime;
+    lastTime = ts;
+    if (state === 'playing') {
+      acc += dt;
+      while (acc >= tickMs) {
+        tick();
+        acc -= tickMs;
+        if (state !== 'playing') { acc = 0; break; }
+      }
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  loadName();
+  renderLeaderboard();
+  showOverlay('스네이크', '방향키/스와이프로 뱀을 조종해 먹이를 먹으세요', '시작');
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
