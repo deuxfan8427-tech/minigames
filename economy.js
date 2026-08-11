@@ -27,7 +27,8 @@ var MONEY_DIVISORS = {
   'number-baseball': 10,
   reaction: 4.5,
   'aim-trainer': 5,
-  'simon-says': 5
+  'simon-says': 5,
+  minesweeper: 4
 };
 
 export function moneyFromScore(game, score) {

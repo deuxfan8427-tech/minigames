@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>지뢰찾기</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 380px;
+    color: #eee;
+    font-size: 15px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+    width: 360px;
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.94);
+    border-radius: 16px;
+    color: #fff;
+    text-align: center;
+    padding: 16px;
+    box-sizing: border-box;
+    z-index: 10;
+  }
+  #overlay h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  #versionTag {
+    color: #444;
+    font-size: 10px;
+    margin-top: 4px;
+  }
+
+  /* --- minesweeper widget (dark theme) --- */
+  #mobile-minesweeper {
+    --cell-size: 42px;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    color: #eee;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .ms-panel {
+    background: #0b0b14;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    box-sizing: border-box;
+  }
+  .ms-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .ms-message {
+    min-height: 20px;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .ms-restart {
+    border: 0;
+    border-radius: 10px;
+    padding: 9px 12px;
+    background: #4f8cff;
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .ms-board-wrap {
+    overflow: auto;
+    max-height: 58vh;
+    border-radius: 12px;
+    background: #1c1c2a;
+    touch-action: manipulation;
+  }
+  .ms-board {
+    display: grid;
+    gap: 2px;
+    width: max-content;
+    margin: auto;
+    padding: 2px;
+  }
+  .ms-cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: #2c2c40;
+    color: #eee;
+    font-size: clamp(14px, 5vw, 20px);
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ms-cell:active {
+    filter: brightness(1.2);
+  }
+  .ms-cell.open {
+    background: #23233a;
+  }
+  .ms-cell.mine {
+    background: #ff5f6d;
+  }
+  .ms-cell.n1 { color: #48dbfb; }
+  .ms-cell.n2 { color: #1dd1a1; }
+  .ms-cell.n3 { color: #ff5f6d; }
+  .ms-cell.n4 { color: #a29bfe; }
+  .ms-cell.n5 { color: #feca57; }
+  .ms-cell.n6 { color: #00d2d3; }
+  .ms-cell.n7 { color: #f5f6fa; }
+  .ms-cell.n8 { color: #8395a7; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>라운드: <span id="hudRound">1</span></div>
+    <div>💰 <span id="money">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <div id="mobile-minesweeper"></div>
+    <div id="overlay">
+      <h1 id="overlayTitle">지뢰찾기</h1>
+      <p id="overlayMsg">길게 눌러 칸을 열고, 탭하면 깃발이 표시돼요. 지뢰 없이 클리어할수록 라운드가 올라가요</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 라운드 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="hint">길게 누르기: 칸 열기 · 짧게 탭: 깃발/물음표</div>
+  <div id="versionTag">v1.1.0 · 2026-08-11 업데이트</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
+(function() {
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var hudRound = document.getElementById('hudRound');
+  var moneyEl = document.getElementById('money');
+
+  var GAME_ID = 'minesweeper';
+  var LS_NAME_KEY = 'mg_playerName';
+  var playerName = '플레이어';
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+        refreshMoney();
+      }
+    } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitFinalScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  // ---- minesweeper widget logic ----
+  var root = document.getElementById('mobile-minesweeper');
+  var LONG_PRESS_MS = 500;
+  var SAVE_KEY = 'mobile-minesweeper-best-round';
+
+  var round = 1;
+  var bestRound = Number(localStorage.getItem(SAVE_KEY) || 1);
+  var rows, cols, mineCount, board, started, ended, openedCount;
+  var longPressTimer = null;
+  var activeCell = null;
+  var longPressTriggered = false;
+  var gameActive = false;
+
+  root.innerHTML =
+    '<div class="ms-panel">' +
+      '<div class="ms-status">' +
+        '<span id="ms-round"></span>' +
+        '<span id="ms-best"></span>' +
+        '<button class="ms-restart" id="ms-restart" type="button">새 게임</button>' +
+      '</div>' +
+      '<div class="ms-message" id="ms-message"></div>' +
+      '<div class="ms-board-wrap">' +
+        '<div class="ms-board" id="ms-board"></div>' +
+      '</div>' +
+    '</div>';
+
+  var boardEl = root.querySelector('#ms-board');
+  var roundEl = root.querySelector('#ms-round');
+  var bestEl = root.querySelector('#ms-best');
+  var messageEl = root.querySelector('#ms-message');
+
+  root.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  root.addEventListener('selectstart', function(e) { e.preventDefault(); });
+  root.querySelector('#ms-restart').addEventListener('click', function() {
+    if (!gameActive) return;
+    round = 1;
+    startRound();
+  });
+
+  function getRoundSettings() {
+    var size = Math.min(6 + round, 12);
+    return {
+      rows: size,
+      cols: size,
+      mines: Math.min(Math.floor(size * size * 0.16) + round - 1, size * size - 1)
+    };
+  }
+
+  function startRound() {
+    var settings = getRoundSettings();
+    rows = settings.rows;
+    cols = settings.cols;
+    mineCount = settings.mines;
+    started = false;
+    ended = false;
+    openedCount = 0;
+    board = [];
+    for (var r = 0; r < rows; r++) {
+      var rowArr = [];
+      for (var c = 0; c < cols; c++) {
+        rowArr.push({ row: r, col: c, mine: false, open: false, mark: 0, around: 0 });
+      }
+      board.push(rowArr);
+    }
+
+    var availableWidth = Math.min(root.clientWidth - 36, 520);
+    var cellSize = Math.max(22, Math.min(44, Math.floor((availableWidth - (cols - 1) * 2) / cols)));
+    root.style.setProperty('--cell-size', cellSize + 'px');
+
+    roundEl.textContent = '라운드 ' + round;
+    bestEl.textContent = '최고 ' + bestRound;
+    hudRound.textContent = round;
+    messageEl.textContent = '길게 눌러 칸 열기';
+    renderBoard();
+  }
+
+  function flatBoard() {
+    var out = [];
+    for (var r = 0; r < board.length; r++) {
+      for (var c = 0; c < board[r].length; c++) out.push(board[r][c]);
+    }
+    return out;
+  }
+
+  function renderBoard() {
+    boardEl.style.gridTemplateColumns = 'repeat(' + cols + ', var(--cell-size))';
+    boardEl.innerHTML = '';
+
+    flatBoard().forEach(function(cell) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ms-cell';
+      button.dataset.row = cell.row;
+      button.dataset.col = cell.col;
+
+      if (cell.open) {
+        button.classList.add('open');
+        if (cell.mine) {
+          button.classList.add('mine');
+          button.textContent = '💣';
+        } else if (cell.around > 0) {
+          button.classList.add('n' + cell.around);
+          button.textContent = cell.around;
+        }
+      } else if (cell.mark === 1) {
+        button.textContent = '🚩';
+      } else if (cell.mark === 2) {
+        button.textContent = '❓';
+      }
+
+      button.addEventListener('pointerdown', onPointerDown);
+      button.addEventListener('pointerup', onPointerUp);
+      button.addEventListener('pointerleave', cancelPress);
+      button.addEventListener('pointercancel', cancelPress);
+      boardEl.appendChild(button);
+    });
+  }
+
+  function onPointerDown(event) {
+    if (!gameActive || ended || event.button !== 0) return;
+    event.preventDefault();
+
+    activeCell = getCell(event.currentTarget);
+    if (activeCell.open) return;
+
+    longPressTriggered = false;
+    if (event.currentTarget.setPointerCapture) {
+      try { event.currentTarget.setPointerCapture(event.pointerId); } catch (e) {}
+    }
+
+    longPressTimer = setTimeout(function() {
+      longPressTriggered = true;
+      openCell(activeCell);
+      cancelPress();
+    }, LONG_PRESS_MS);
+  }
+
+  function onPointerUp(event) {
+    if (!gameActive || ended || event.button !== 0) return;
+    event.preventDefault();
+
+    var cell = getCell(event.currentTarget);
+    var wasLongPress = longPressTriggered;
+    cancelPress();
+
+    if (!wasLongPress && !cell.open) {
+      cycleMark(cell);
+    }
+  }
+
+  function cancelPress() {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    activeCell = null;
+  }
+
+  function getCell(button) {
+    return board[Number(button.dataset.row)][Number(button.dataset.col)];
+  }
+
+  function cycleMark(cell) {
+    cell.mark = (cell.mark + 1) % 3;
+    renderBoard();
+  }
+
+  function placeMines(firstCell) {
+    var candidates = flatBoard().filter(function(cell) { return cell !== firstCell; });
+    shuffle(candidates);
+
+    candidates.slice(0, mineCount).forEach(function(cell) { cell.mine = true; });
+
+    flatBoard().forEach(function(cell) {
+      cell.around = neighbors(cell).filter(function(n) { return n.mine; }).length;
+    });
+
+    started = true;
+  }
+
+  function openCell(cell) {
+    if (ended || cell.open || cell.mark === 1) return;
+
+    if (!started) placeMines(cell);
+
+    if (cell.mine) {
+      cell.open = true;
+      ended = true;
+      gameActive = false;
+      flatBoard().filter(function(item) { return item.mine; }).forEach(function(item) { item.open = true; });
+      messageEl.textContent = '지뢰를 밟았어요!';
+      renderBoard();
+
+      var roundsCleared = round - 1;
+      var score = Math.max(0, roundsCleared * 40);
+      submitFinalScore(playerName, score);
+      showOverlay('게임 오버', '라운드 ' + round + '에서 실패 (클리어 ' + roundsCleared + '라운드) · 점수 ' + score, '다시 시작');
+      return;
+    }
+
+    reveal(cell);
+
+    if (openedCount === rows * cols - mineCount) {
+      ended = true;
+      if (round > bestRound) {
+        bestRound = round;
+        try { localStorage.setItem(SAVE_KEY, bestRound); } catch (e) {}
+      }
+      messageEl.textContent = '라운드 ' + round + ' 클리어!';
+      renderBoard();
+
+      setTimeout(function() {
+        round += 1;
+        startRound();
+      }, 900);
+      return;
+    }
+
+    renderBoard();
+  }
+
+  function reveal(cell) {
+    if (cell.open || cell.mine || cell.mark === 1) return;
+    cell.open = true;
+    cell.mark = 0;
+    openedCount += 1;
+    if (cell.around === 0) {
+      neighbors(cell).forEach(reveal);
+    }
+  }
+
+  function neighbors(cell) {
+    var result = [];
+    for (var r = cell.row - 1; r <= cell.row + 1; r++) {
+      for (var c = cell.col - 1; c <= cell.col + 1; c++) {
+        if (r === cell.row && c === cell.col) continue;
+        if (board[r] && board[r][c]) result.push(board[r][c]);
+      }
+    }
+    return result;
+  }
+
+  function shuffle(items) {
+    for (var i = items.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = items[i]; items[i] = items[j]; items[j] = tmp;
+    }
+  }
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
+    round = 1;
+    gameActive = true;
+    overlay.style.display = 'none';
+    startRound();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  loadName();
+  renderLeaderboard();
+  showOverlay('지뢰찾기', '길게 눌러 칸을 열고, 탭하면 깃발이 표시돼요. 지뢰 없이 클리어할수록 라운드가 올라가요', '시작');
+})();
+</script>
+</body>
+</html>
