@@ -24,7 +24,8 @@ var MONEY_DIVISORS = {
   snake: 1.5,
   'car-dodge': 7,
   tetris: 8.5,
-  'number-baseball': 10
+  'number-baseball': 10,
+  reaction: 4.5
 };
 
 export function moneyFromScore(game, score) {

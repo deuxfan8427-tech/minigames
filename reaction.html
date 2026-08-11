@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>반응속도 테스트</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 380px;
+    color: #eee;
+    font-size: 15px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+    width: 340px;
+    max-width: calc(100vw - 20px);
+    background: #0b0b14;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    box-sizing: border-box;
+    padding: 14px;
+  }
+  .rt-info {
+    display: flex;
+    justify-content: center;
+    color: #999;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  #rt-area {
+    width: 100%;
+    height: 280px;
+    border: 0;
+    border-radius: 12px;
+    background: #1c1c2a;
+    color: #fff;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    display: block;
+  }
+  #rt-area.rt-wait {
+    background: #ff5f6d;
+  }
+  #rt-area.rt-go {
+    background: #1dd1a1;
+  }
+  #rt-result {
+    margin-top: 14px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #ddd;
+    text-align: center;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.92);
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  #overlay h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  .linkBtn {
+    background: transparent !important;
+    color: #7fa8ff !important;
+    padding: 6px !important;
+    font-size: 13px !important;
+    margin-top: 10px;
+    text-decoration: underline;
+    border: none;
+    cursor: pointer;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  #versionTag {
+    color: #444;
+    font-size: 10px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>시도: <span id="round">0</span>/5</div>
+    <div>💰 <span id="money">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <div class="rt-info">개인 최고 기록(이 기기): <b id="personalBest">-</b></div>
+    <button id="rt-area">먼저 이름을 입력해주세요</button>
+    <div id="rt-result">이름 입력 후 시작 버튼을 눌러주세요</div>
+    <div id="overlay">
+      <h1 id="overlayTitle">반응속도 테스트</h1>
+      <p id="overlayMsg">초록색으로 바뀌면 최대한 빨리 클릭하세요 (5회 평균)</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 기록 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="hint">빨간색일 때 누르면 실패! 초록색일 때만 클릭하세요</div>
+  <div id="versionTag">v1.1.0 · 2026-08-11 업데이트</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
+(function() {
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var roundEl = document.getElementById('round');
+  var moneyEl = document.getElementById('money');
+  var personalBestEl = document.getElementById('personalBest');
+  var area = document.getElementById('rt-area');
+  var result = document.getElementById('rt-result');
+
+  var GAME_ID = 'reaction';
+  var LS_NAME_KEY = 'mg_playerName';
+  var LS_BEST_KEY = 'reaction_personalBest';
+  var playerName = '플레이어';
+  var ROUNDS = 5;
+
+  var gameState = 'locked'; // locked | idle | waiting | ready | done
+  var startTime = 0;
+  var timer = null;
+  var round = 0;
+  var scores = [];
+  var personalBest = Number(localStorage.getItem(LS_BEST_KEY)) || 0;
+
+  function updatePersonalBestDisplay() {
+    personalBestEl.textContent = personalBest ? personalBest + 'ms' : '-';
+  }
+  updatePersonalBestDisplay();
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+        refreshMoney();
+      }
+    } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitFinalScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  function beginTestRun() {
+    round = 0;
+    scores = [];
+    roundEl.textContent = '0';
+    result.textContent = '';
+    gameState = 'idle';
+    overlay.style.display = 'none';
+    area.textContent = 'START';
+    area.className = '';
+  }
+
+  function scheduleGo() {
+    area.className = 'rt-wait';
+    area.textContent = '초록색이 될 때까지 기다리세요...';
+    gameState = 'waiting';
+    timer = setTimeout(function() {
+      gameState = 'ready';
+      area.className = 'rt-go';
+      area.textContent = 'CLICK!';
+      startTime = performance.now();
+    }, 1000 + Math.random() * 2500);
+  }
+
+  function finishRun() {
+    var avg = Math.round(scores.reduce(function(a, b) { return a + b; }, 0) / scores.length);
+    gameState = 'locked';
+    area.className = '';
+    area.textContent = '먼저 이름을 입력해주세요';
+
+    var score = Math.max(0, Math.round(600 - avg));
+    submitFinalScore(playerName, score);
+    showOverlay('완료!', '평균 반응속도 ' + avg + 'ms · 점수 ' + score, '다시 시작');
+  }
+
+  area.addEventListener('click', function() {
+    if (gameState === 'locked') return;
+
+    if (gameState === 'idle') {
+      scheduleGo();
+      return;
+    }
+
+    if (gameState === 'waiting') {
+      clearTimeout(timer);
+      gameState = 'idle';
+      area.className = '';
+      area.textContent = 'START';
+      result.textContent = '너무 빨랐어요! 다시 클릭해서 재시도하세요.';
+      return;
+    }
+
+    if (gameState === 'ready') {
+      var time = Math.round(performance.now() - startTime);
+      scores.push(time);
+      round++;
+      roundEl.textContent = round;
+      result.textContent = time + ' ms';
+
+      if (!personalBest || time < personalBest) {
+        personalBest = time;
+        try { localStorage.setItem(LS_BEST_KEY, personalBest); } catch (e) {}
+        updatePersonalBestDisplay();
+      }
+
+      if (round >= ROUNDS) {
+        finishRun();
+      } else {
+        scheduleGo();
+      }
+    }
+  });
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
+    beginTestRun();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  loadName();
+  renderLeaderboard();
+  showOverlay('반응속도 테스트', '초록색으로 바뀌면 최대한 빨리 클릭하세요 (5회 평균)', '시작');
+})();
+</script>
+</body>
+</html>
