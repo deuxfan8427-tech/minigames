@@ -159,6 +159,16 @@
   #overlay button.mainBtn:active {
     background: #3a72e0;
   }
+  .linkBtn {
+    background: transparent !important;
+    color: #7fa8ff !important;
+    padding: 6px !important;
+    font-size: 13px !important;
+    margin-top: 10px;
+    text-decoration: underline;
+    border: none;
+    cursor: pointer;
+  }
   #nameInput {
     background: #1c1c2a;
     border: 1px solid #3a3a52;
@@ -212,6 +222,7 @@
   <div id="hud">
     <div>시도: <span id="tries">0</span>/10</div>
     <div>⏱ <span id="timer">0</span>초</div>
+    <div>💰 <span id="money">0</span></div>
     <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
   </div>
   <div id="stage">
@@ -242,6 +253,7 @@
       <p id="overlayMsg">서로 다른 숫자 4자리를 추리하세요 (0으로 시작 불가, 최대 10번)</p>
       <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
       <button class="mainBtn" id="startBtn">시작</button>
+      <a href="shop.html" class="linkBtn" style="display:inline-block;text-decoration:none;">🛍️ 상점 가기</a>
       <div id="leaderboard">
         <h2>최고 기록 TOP 10</h2>
         <ol id="leaderboardList"></ol>
@@ -253,6 +265,7 @@
 
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
 (function() {
   var overlay = document.getElementById('overlay');
   var overlayTitle = document.getElementById('overlayTitle');
@@ -269,9 +282,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   var submitBtn = document.getElementById('submitBtn');
   var backBtn = document.getElementById('backBtn');
   var clearBtn = document.getElementById('clearBtn');
+  var moneyEl = document.getElementById('money');
 
   var GAME_ID = 'number-baseball';
-  var LS_NAME_KEY = 'baseball_playerName';
+  var LS_NAME_KEY = 'mg_playerName';
   var playerName = '플레이어';
   var DIGITS = 4;
   var MAX_TRIES = 10;
@@ -282,8 +296,16 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       if (saved) {
         playerName = saved;
         nameInput.value = saved;
+        refreshMoney();
       }
     } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
   }
 
   function renderLeaderboard() {
@@ -317,6 +339,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     lbSubmitScore(GAME_ID, name, finalScore).then(function() {
       renderLeaderboard();
     });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
   }
 
   var state = 'idle'; // idle | playing | over
@@ -493,6 +519,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     if (!name) name = '플레이어';
     playerName = name;
     try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
     startGame();
   });
 

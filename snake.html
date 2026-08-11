@@ -76,6 +76,16 @@
   #overlay button:active {
     background: #3a72e0;
   }
+  .linkBtn {
+    background: transparent !important;
+    color: #7fa8ff !important;
+    padding: 6px !important;
+    font-size: 13px !important;
+    margin-top: 10px;
+    text-decoration: underline;
+    border: none;
+    cursor: pointer;
+  }
   #nameInput {
     background: #1c1c2a;
     border: 1px solid #3a3a52;
@@ -128,6 +138,7 @@
 <div id="wrap">
   <div id="hud">
     <div>점수: <span id="score">0</span></div>
+    <div>💰 <span id="money">0</span></div>
     <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
   </div>
   <div id="stage">
@@ -137,6 +148,7 @@
       <p id="overlayMsg">방향키/스와이프로 뱀을 조종해 먹이를 먹으세요</p>
       <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
       <button id="startBtn">시작</button>
+      <a href="shop.html" class="linkBtn" style="display:inline-block;text-decoration:none;">🛍️ 상점 가기</a>
       <div id="leaderboard">
         <h2>최고 기록 TOP 10</h2>
         <ol id="leaderboardList"></ol>
@@ -148,6 +160,7 @@
 
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -158,9 +171,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   var nameInput = document.getElementById('nameInput');
   var leaderboardList = document.getElementById('leaderboardList');
   var scoreEl = document.getElementById('score');
+  var moneyEl = document.getElementById('money');
 
   var GAME_ID = 'snake';
-  var LS_NAME_KEY = 'snake_playerName';
+  var LS_NAME_KEY = 'mg_playerName';
   var playerName = '플레이어';
 
   function loadName() {
@@ -169,8 +183,16 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       if (saved) {
         playerName = saved;
         nameInput.value = saved;
+        refreshMoney();
       }
     } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
   }
 
   function renderLeaderboard() {
@@ -204,6 +226,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     lbSubmitScore(GAME_ID, name, finalScore).then(function() {
       renderLeaderboard();
     });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
   }
 
   var W, H, DPR, cell;
@@ -323,6 +349,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     if (!name) name = '플레이어';
     playerName = name;
     try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
     startGame();
   });
 

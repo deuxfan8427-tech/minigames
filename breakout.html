@@ -185,6 +185,7 @@
     <div>점수: <span id="score">0</span></div>
     <div>레벨: <span id="level">1</span></div>
     <div>목숨: <span id="lives">3</span></div>
+    <div>💰 <span id="money">0</span></div>
   </div>
   <div id="stage">
     <canvas id="game"></canvas>
@@ -195,6 +196,7 @@
         <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
         <button id="startBtn">시작</button>
         <button id="showItemInfoBtn" class="linkBtn">아이템 설명 보기</button>
+        <a href="shop.html" class="linkBtn" style="display:inline-block;text-decoration:none;">🛍️ 상점 가기</a>
         <div id="leaderboard">
           <h2>최고 기록 TOP 10</h2>
           <ol id="leaderboardList"></ol>
@@ -212,6 +214,7 @@
 
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -229,9 +232,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   var scoreEl = document.getElementById('score');
   var levelEl = document.getElementById('level');
   var livesEl = document.getElementById('lives');
+  var moneyEl = document.getElementById('money');
 
   var GAME_ID = 'breakout';
-  var LS_NAME_KEY = 'breakout_playerName';
+  var LS_NAME_KEY = 'mg_playerName';
   var playerName = '플레이어';
 
   function loadName() {
@@ -240,8 +244,16 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       if (saved) {
         playerName = saved;
         nameInput.value = saved;
+        refreshMoney();
       }
     } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
   }
 
   function renderLeaderboard() {
@@ -275,6 +287,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     lbSubmitScore(GAME_ID, name, finalScore).then(function() {
       renderLeaderboard();
     });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
   }
 
   var W, H, DPR;
@@ -576,6 +592,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     if (!name) name = '플레이어';
     playerName = name;
     try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
     startGame();
   });
 

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>상점</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: #14141f;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    color: #eee;
+  }
+  #wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-size: 22px;
+    margin: 0;
+  }
+  header a {
+    color: #888;
+    text-decoration: none;
+    font-size: 14px;
+  }
+  #nameBar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: #1c1c2a;
+    border: 1px solid #2c2c40;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  #nameBar input {
+    flex: 1;
+    background: #14141f;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  #nameBar button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #walletBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #2a2a45, #1c1c2a);
+    border: 1px solid #3a3a52;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 22px;
+  }
+  #walletBar .label {
+    color: #999;
+    font-size: 12px;
+  }
+  #walletBar .amount {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd700;
+  }
+  .categorySection {
+    margin-bottom: 26px;
+  }
+  .categoryTitle {
+    font-size: 15px;
+    color: #aaa;
+    margin-bottom: 10px;
+  }
+  .itemGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+  .itemCard {
+    background: #1c1c2a;
+    border: 1px solid #2c2c40;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .itemCard.equipped {
+    border-color: #ffd700;
+  }
+  .swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    margin: 0 auto 8px;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .swatch.dual {
+    background: none;
+    position: relative;
+  }
+  .swatch.dual .half {
+    position: absolute;
+    width: 22px;
+    height: 44px;
+    top: 0;
+  }
+  .itemName {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .itemPrice {
+    font-size: 12px;
+    color: #ffd700;
+    margin-bottom: 8px;
+  }
+  .itemBtn {
+    width: 100%;
+    padding: 7px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .itemBtn.buy {
+    background: #4f8cff;
+    color: #fff;
+  }
+  .itemBtn.equip {
+    background: #2c2c40;
+    color: #ccc;
+  }
+  .itemBtn.equipped {
+    background: #ffd700;
+    color: #1c1c2a;
+    font-weight: bold;
+  }
+  .itemBtn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  #status {
+    text-align: center;
+    color: #888;
+    font-size: 13px;
+    min-height: 18px;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <h1>🛍️ 상점</h1>
+    <a href="index.html">← 목록</a>
+  </header>
+
+  <div id="nameBar">
+    <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력 (게임에서 쓴 이름과 동일하게)">
+    <button id="loadBtn">불러오기</button>
+  </div>
+
+  <div id="walletBar">
+    <div>
+      <div class="label">보유 머니</div>
+      <div class="amount">💰 <span id="moneyAmount">-</span></div>
+    </div>
+    <div class="label">점수로 번 머니로 꾸미기 아이템을 사보세요</div>
+  </div>
+
+  <div id="status"></div>
+  <div id="shopContent"></div>
+</div>
+
+<script type="module">
+import { getWallet, purchaseItem, setEquipped } from './economy.js';
+import { SHOP_ITEMS, CATEGORY_LABELS, itemsByCategory, findItem } from './shopItems.js';
+
+var LS_NAME_KEY = 'mg_playerName';
+var nameInput = document.getElementById('nameInput');
+var loadBtn = document.getElementById('loadBtn');
+var moneyAmount = document.getElementById('moneyAmount');
+var shopContent = document.getElementById('shopContent');
+var statusEl = document.getElementById('status');
+
+var playerName = '';
+var wallet = { money: 0, owned: [], equipped: {} };
+
+function loadName() {
+  try {
+    var saved = localStorage.getItem(LS_NAME_KEY);
+    if (saved) {
+      playerName = saved;
+      nameInput.value = saved;
+    }
+  } catch (e) {}
+}
+
+function setStatus(msg) {
+  statusEl.textContent = msg;
+  if (msg) setTimeout(function() { if (statusEl.textContent === msg) statusEl.textContent = ''; }, 2500);
+}
+
+function swatchHtml(item) {
+  if (item.category === 'snake') {
+    return '<div class="swatch dual" style="background:' + item.bodyColor + '">' +
+      '<div class="half" style="left:22px;background:' + item.headColor + ';border-radius:0 22px 22px 0;"></div>' +
+    '</div>';
+  }
+  return '<div class="swatch" style="background:' + item.value + '"></div>';
+}
+
+function render() {
+  moneyAmount.textContent = wallet.money;
+  shopContent.innerHTML = '';
+
+  var categories = ['ball', 'paddle', 'car', 'snake'];
+  for (var c = 0; c < categories.length; c++) {
+    var cat = categories[c];
+    var section = document.createElement('div');
+    section.className = 'categorySection';
+
+    var title = document.createElement('div');
+    title.className = 'categoryTitle';
+    title.textContent = CATEGORY_LABELS[cat];
+    section.appendChild(title);
+
+    var grid = document.createElement('div');
+    grid.className = 'itemGrid';
+
+    var items = itemsByCategory(cat);
+    var equippedId = (wallet.equipped && wallet.equipped[cat]) || (cat + '_default');
+
+    for (var i = 0; i < items.length; i++) {
+      (function(item) {
+        var owned = item.price === 0 || wallet.owned.indexOf(item.id) !== -1;
+        var isEquipped = equippedId === item.id;
+
+        var card = document.createElement('div');
+        card.className = 'itemCard' + (isEquipped ? ' equipped' : '');
+
+        var html = swatchHtml(item);
+        html += '<div class="itemName">' + item.name + '</div>';
+        html += '<div class="itemPrice">' + (item.price === 0 ? '기본' : '💰 ' + item.price) + '</div>';
+        card.innerHTML = html;
+
+        var btn = document.createElement('button');
+        if (isEquipped) {
+          btn.className = 'itemBtn equipped';
+          btn.textContent = '장착됨';
+          btn.disabled = true;
+        } else if (owned) {
+          btn.className = 'itemBtn equip';
+          btn.textContent = '장착하기';
+          btn.addEventListener('click', function() { equip(item); });
+        } else {
+          btn.className = 'itemBtn buy';
+          btn.textContent = '구매하기';
+          btn.addEventListener('click', function() { buy(item); });
+        }
+        card.appendChild(btn);
+        grid.appendChild(card);
+      })(items[i]);
+    }
+
+    section.appendChild(grid);
+    shopContent.appendChild(section);
+  }
+}
+
+async function refreshWallet() {
+  if (!playerName) return;
+  wallet = await getWallet(playerName);
+  render();
+}
+
+async function buy(item) {
+  if (!playerName) { setStatus('먼저 이름을 입력하고 불러오기를 눌러주세요'); return; }
+  if (wallet.money < item.price) { setStatus('머니가 부족해요'); return; }
+  var result = await purchaseItem(playerName, item.id, item.price);
+  if (result.success) {
+    wallet = result.wallet;
+    render();
+    setStatus(item.name + ' 구매 완료!');
+  } else {
+    setStatus('구매에 실패했어요');
+  }
+}
+
+async function equip(item) {
+  if (!playerName) return;
+  var updated = await setEquipped(playerName, item.category, item.id);
+  if (updated) {
+    wallet = updated;
+    render();
+    setStatus(item.name + ' 장착했어요');
+  }
+}
+
+loadBtn.addEventListener('click', function() {
+  var name = nameInput.value.trim().slice(0, 8);
+  if (!name) { setStatus('이름을 입력해주세요'); return; }
+  playerName = name;
+  try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+  setStatus('불러오는 중...');
+  refreshWallet().then(function() { setStatus(''); });
+});
+
+nameInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') loadBtn.click();
+});
+
+loadName();
+if (playerName) refreshWallet();
+else render();
+</script>
+</body>
+</html>
