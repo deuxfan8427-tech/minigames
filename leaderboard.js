@@ -22,20 +22,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export async function submitScore(game, name, score, extra) {
+export async function submitScore(game, name, score) {
   try {
-    var doc = {
+    await addDoc(collection(db, "scores"), {
       game: game,
       name: name,
       score: score,
       ts: serverTimestamp()
-    };
-    if (extra) {
-      for (var key in extra) {
-        if (Object.prototype.hasOwnProperty.call(extra, key)) doc[key] = extra[key];
-      }
-    }
-    await addDoc(collection(db, "scores"), doc);
+    });
     return true;
   } catch (e) {
     console.error("leaderboard submit failed", e);
