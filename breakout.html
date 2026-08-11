@@ -76,6 +76,61 @@
   #overlay button:active {
     background: #3a72e0;
   }
+  #mainPanel, #itemInfoPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-height: 90%;
+    overflow-y: auto;
+    padding: 0 6px;
+  }
+  .linkBtn {
+    background: transparent !important;
+    color: #7fa8ff !important;
+    padding: 6px !important;
+    font-size: 13px !important;
+    margin-top: 10px;
+    text-decoration: underline;
+  }
+  .linkBtn:active {
+    background: transparent !important;
+  }
+  #itemInfoList {
+    width: 100%;
+    max-width: 280px;
+    text-align: left;
+    margin-bottom: 16px;
+  }
+  .itemRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px;
+    border-bottom: 1px solid #2a2a3a;
+  }
+  .itemSwatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 11px;
+    color: #0b0b14;
+    border: 3px solid;
+  }
+  .itemRow .itemName {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .itemRow .itemName.good { color: #2ecc71; }
+  .itemRow .itemName.bad { color: #e74c3c; }
+  .itemRow .itemDesc {
+    font-size: 12px;
+    color: #999;
+  }
   #nameInput {
     background: #1c1c2a;
     border: 1px solid #3a3a52;
@@ -134,13 +189,21 @@
   <div id="stage">
     <canvas id="game"></canvas>
     <div id="overlay">
-      <h1 id="overlayTitle">벽돌깨기</h1>
-      <p id="overlayMsg">패들을 움직여 공을 튕겨 벽돌을 모두 깨보세요</p>
-      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
-      <button id="startBtn">시작</button>
-      <div id="leaderboard">
-        <h2>최고 기록 TOP 10</h2>
-        <ol id="leaderboardList"></ol>
+      <div id="mainPanel">
+        <h1 id="overlayTitle">벽돌깨기</h1>
+        <p id="overlayMsg">패들을 움직여 공을 튕겨 벽돌을 모두 깨보세요</p>
+        <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+        <button id="startBtn">시작</button>
+        <button id="showItemInfoBtn" class="linkBtn">아이템 설명 보기</button>
+        <div id="leaderboard">
+          <h2>최고 기록 TOP 10</h2>
+          <ol id="leaderboardList"></ol>
+        </div>
+      </div>
+      <div id="itemInfoPanel" style="display:none;">
+        <h1>아이템 설명</h1>
+        <div id="itemInfoList"></div>
+        <button id="closeItemInfoBtn" class="mainBtn">닫기</button>
       </div>
     </div>
   </div>
@@ -153,6 +216,11 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
   var overlay = document.getElementById('overlay');
+  var mainPanel = document.getElementById('mainPanel');
+  var itemInfoPanel = document.getElementById('itemInfoPanel');
+  var itemInfoList = document.getElementById('itemInfoList');
+  var showItemInfoBtn = document.getElementById('showItemInfoBtn');
+  var closeItemInfoBtn = document.getElementById('closeItemInfoBtn');
   var overlayTitle = document.getElementById('overlayTitle');
   var overlayMsg = document.getElementById('overlayMsg');
   var startBtn = document.getElementById('startBtn');
@@ -230,12 +298,12 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   var pierceTimer = 0;
 
   var ITEM_META = {
-    paddleGrow: { label: 'L+', color: '#1dd1a1' },
-    paddleShrink: { label: 'L-', color: '#ff5f6d' },
-    ballSlow: { label: 'V-', color: '#48dbfb' },
-    ballFast: { label: 'V+', color: '#ff9f43' },
-    multiBall: { label: 'x3', color: '#feca57' },
-    pierce: { label: 'P', color: '#a29bfe' }
+    paddleGrow: { label: 'L+', color: '#1dd1a1', good: true, name: '막대 길어짐', desc: '패들이 8초간 1.5배 길어져요' },
+    ballSlow: { label: 'V-', color: '#48dbfb', good: true, name: '공 느려짐', desc: '공 속도가 8초간 느려져요' },
+    multiBall: { label: 'x3', color: '#feca57', good: true, name: '공 3개', desc: '공이 최대 3개까지 늘어나요' },
+    pierce: { label: 'P', color: '#a29bfe', good: true, name: '벽돌 관통', desc: '8초간 공이 벽돌을 뚫고 지나가요' },
+    paddleShrink: { label: 'L-', color: '#ff5f6d', good: false, name: '막대 짧아짐', desc: '패들이 8초간 0.6배로 짧아져요' },
+    ballFast: { label: 'V+', color: '#ff9f43', good: false, name: '공 빨라짐', desc: '공 속도가 8초간 빨라져요' }
   };
   var ITEM_GOOD_POOL = ['paddleGrow', 'ballSlow', 'multiBall', 'pierce'];
   var ITEM_BAD_POOL = ['paddleShrink', 'ballFast'];
@@ -308,7 +376,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   }
 
   function spawnBalls() {
-    var speed = (10.0 + (level - 1) * 1.3) * (H / 640);
+    var speed = (8.5 + (level - 1) * 1.3) * (H / 640);
     var count = ballCountForLevel(level);
     var r = Math.max(5, W * 0.014);
     balls = [];
@@ -422,7 +490,50 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     overlayMsg.textContent = msg;
     startBtn.textContent = btnText;
     overlay.style.display = 'flex';
+    mainPanel.style.display = 'flex';
+    itemInfoPanel.style.display = 'none';
   }
+
+  function renderItemInfo() {
+    itemInfoList.innerHTML = '';
+    var order = ITEM_GOOD_POOL.concat(ITEM_BAD_POOL);
+    for (var i = 0; i < order.length; i++) {
+      var meta = ITEM_META[order[i]];
+      var row = document.createElement('div');
+      row.className = 'itemRow';
+
+      var swatch = document.createElement('div');
+      swatch.className = 'itemSwatch';
+      swatch.style.background = meta.color;
+      swatch.style.borderColor = meta.good ? '#2ecc71' : '#e74c3c';
+      swatch.textContent = meta.label;
+
+      var text = document.createElement('div');
+      var nameEl = document.createElement('div');
+      nameEl.className = 'itemName ' + (meta.good ? 'good' : 'bad');
+      nameEl.textContent = meta.name + (meta.good ? ' (좋음)' : ' (나쁨)');
+      var descEl = document.createElement('div');
+      descEl.className = 'itemDesc';
+      descEl.textContent = meta.desc;
+      text.appendChild(nameEl);
+      text.appendChild(descEl);
+
+      row.appendChild(swatch);
+      row.appendChild(text);
+      itemInfoList.appendChild(row);
+    }
+  }
+
+  showItemInfoBtn.addEventListener('click', function() {
+    renderItemInfo();
+    mainPanel.style.display = 'none';
+    itemInfoPanel.style.display = 'flex';
+  });
+
+  closeItemInfoBtn.addEventListener('click', function() {
+    itemInfoPanel.style.display = 'none';
+    mainPanel.style.display = 'flex';
+  });
 
   // Input
   var pointerActive = false;
@@ -620,6 +731,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       for (var k = 0; k < items.length; k++) {
         var it = items[k];
         var meta = ITEM_META[it.type];
+        roundRect(ctx, it.x - 14, it.y - 14, 28, 28, 7);
+        ctx.strokeStyle = meta.good ? '#2ecc71' : '#e74c3c';
+        ctx.lineWidth = 3;
+        ctx.stroke();
         roundRect(ctx, it.x - 13, it.y - 13, 26, 26, 6);
         ctx.fillStyle = meta.color;
         ctx.fill();
@@ -628,6 +743,9 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(meta.label, it.x, it.y + 1);
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = meta.good ? '#2ecc71' : '#e74c3c';
+        ctx.fillText(meta.good ? '▲' : '▼', it.x, it.y - 19);
       }
     }
   }
