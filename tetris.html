@@ -568,6 +568,22 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     ctx.clearRect(0, 0, W, H);
     if (!board) return;
 
+    // faint guide grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (var gc = 1; gc < COLS; gc++) {
+      ctx.beginPath();
+      ctx.moveTo(gc * cell + 0.5, 0);
+      ctx.lineTo(gc * cell + 0.5, H);
+      ctx.stroke();
+    }
+    for (var gr = 1; gr < ROWS; gr++) {
+      ctx.beginPath();
+      ctx.moveTo(0, gr * cell + 0.5);
+      ctx.lineTo(W, gr * cell + 0.5);
+      ctx.stroke();
+    }
+
     for (var r = 0; r < ROWS; r++) {
       for (var c = 0; c < COLS; c++) {
         if (board[r][c]) drawCell(ctx, c * cell, r * cell, cell, board[r][c]);
