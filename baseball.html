@@ -192,9 +192,17 @@
   }
   #leaderboardList li {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     padding: 4px 10px;
     color: #ddd;
+  }
+  #leaderboardList li .mainRow {
+    display: flex;
+    justify-content: space-between;
+  }
+  #leaderboardList li .subRow {
+    font-size: 11px;
+    color: #888;
   }
   #leaderboardList li:nth-child(odd) {
     background: rgba(255,255,255,0.04);
@@ -302,19 +310,31 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
       }
       for (var i = 0; i < list.length; i++) {
         var li = document.createElement('li');
+
+        var mainRow = document.createElement('div');
+        mainRow.className = 'mainRow';
         var rank = document.createElement('span');
         rank.textContent = (i + 1) + '. ' + list[i].name;
         var pts = document.createElement('span');
         pts.textContent = list[i].score;
-        li.appendChild(rank);
-        li.appendChild(pts);
+        mainRow.appendChild(rank);
+        mainRow.appendChild(pts);
+        li.appendChild(mainRow);
+
+        if (list[i].tries != null && list[i].elapsed != null) {
+          var subRow = document.createElement('div');
+          subRow.className = 'subRow';
+          subRow.textContent = list[i].tries + '회 · ' + list[i].elapsed + '초';
+          li.appendChild(subRow);
+        }
+
         leaderboardList.appendChild(li);
       }
     });
   }
 
-  function submitFinalScore(name, finalScore) {
-    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+  function submitFinalScore(name, finalScore, extra) {
+    lbSubmitScore(GAME_ID, name, finalScore, extra).then(function() {
       renderLeaderboard();
     });
   }
@@ -454,7 +474,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     stopTimer();
     var elapsed = elapsedSeconds();
     var score = Math.max(100, 1000 - (tries - 1) * 70 - elapsed * 1);
-    submitFinalScore(playerName, score);
+    submitFinalScore(playerName, score, { tries: tries, elapsed: elapsed });
     showOverlay('정답입니다!', tries + '번 만에 맞혔어요 (' + elapsed + '초) · 점수 ' + score, '다시 시작');
   }
 
