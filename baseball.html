@@ -453,7 +453,7 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     state = 'over';
     stopTimer();
     var elapsed = elapsedSeconds();
-    var score = Math.max(0, 1000 - (tries - 1) * 80 - elapsed * 2);
+    var score = Math.max(100, 1000 - (tries - 1) * 70 - elapsed * 1);
     submitFinalScore(playerName, score);
     showOverlay('정답입니다!', tries + '번 만에 맞혔어요 (' + elapsed + '초) · 점수 ' + score, '다시 시작');
   }

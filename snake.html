@@ -238,7 +238,10 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   function placeFood() {
     var cell2;
     do {
-      cell2 = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+      cell2 = {
+        x: 1 + Math.floor(Math.random() * Math.max(1, COLS - 2)),
+        y: 1 + Math.floor(Math.random() * Math.max(1, ROWS - 2))
+      };
     } while (snake.some(function(s) { return s.x === cell2.x && s.y === cell2.y; }));
     food = cell2;
   }
