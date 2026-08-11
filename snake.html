@@ -161,6 +161,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -188,10 +189,17 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     } catch (e) {}
   }
 
+  var snakeHeadColor = '#7fe0a8';
+  var snakeBodyColor = '#4f8cff';
+
   function refreshMoney() {
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var snakeItem = findItem(equipped.snake);
+      snakeHeadColor = snakeItem ? snakeItem.headColor : '#7fe0a8';
+      snakeBodyColor = snakeItem ? snakeItem.bodyColor : '#4f8cff';
     });
   }
 
@@ -404,7 +412,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     ctx.fill();
 
     for (var i = 0; i < snake.length; i++) {
-      ctx.fillStyle = i === 0 ? '#7fe0a8' : '#4f8cff';
+      ctx.fillStyle = i === 0 ? snakeHeadColor : snakeBodyColor;
       roundRect(ctx, snake[i].x * cell + 1, snake[i].y * cell + 1, cell - 2, cell - 2, 3);
       ctx.fill();
     }

@@ -161,6 +161,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -188,10 +189,15 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     } catch (e) {}
   }
 
+  var playerCarColor = '#4f8cff';
+
   function refreshMoney() {
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var carItem = findItem(equipped.car);
+      playerCarColor = carItem ? carItem.value : '#4f8cff';
     });
   }
 
@@ -538,7 +544,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
       else drawCar(o.x, o.y, o.w, o.h, o.color);
     }
 
-    drawCar(player.x, player.y, player.w, player.h, '#4f8cff');
+    drawCar(player.x, player.y, player.w, player.h, playerCarColor);
   }
 
   var lastTime = 0;

@@ -215,6 +215,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -249,10 +250,18 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     } catch (e) {}
   }
 
+  var ballColor = '#ffffff';
+  var paddleColor = '#e8e8f5';
+
   function refreshMoney() {
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var ballItem = findItem(equipped.ball);
+      var paddleItem = findItem(equipped.paddle);
+      ballColor = ballItem ? ballItem.value : '#ffffff';
+      paddleColor = paddleItem ? paddleItem.value : '#e8e8f5';
     });
   }
 
@@ -731,12 +740,12 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     }
 
     // paddle
-    ctx.fillStyle = '#e8e8f5';
+    ctx.fillStyle = paddleColor;
     roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, paddle.h / 2);
     ctx.fill();
 
     // balls
-    ctx.fillStyle = pierceTimer > 0 ? '#ffe066' : '#ffffff';
+    ctx.fillStyle = pierceTimer > 0 ? '#ffe066' : ballColor;
     for (var i = 0; i < balls.length; i++) {
       ctx.beginPath();
       ctx.arc(balls[i].x, balls[i].y, balls[i].r, 0, Math.PI * 2);
