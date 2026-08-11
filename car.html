@@ -325,6 +325,17 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
   });
 
   function spawnObstacle() {
+    var roll = Math.random();
+    if (roll < 0.08) {
+      spawnTruck();
+    } else if (roll < 0.16) {
+      spawnBanana();
+    } else {
+      spawnCar();
+    }
+  }
+
+  function spawnCar() {
     var choices = [];
     for (var l = 0; l < LANES; l++) {
       if (l !== lastSpawnLane) choices.push(l);
@@ -334,13 +345,49 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     var w = laneWidth * 0.48;
     var h = w * 1.6;
     obstacles.push({
+      type: 'car',
       lane: lane,
       x: laneX[lane],
       y: -h,
       w: w,
       h: h,
-      color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)],
-      passed: false
+      color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)]
+    });
+  }
+
+  function spawnTruck() {
+    var startLane = Math.floor(Math.random() * (LANES - 1));
+    var w = laneWidth * 1.9;
+    var h = w * 0.5;
+    var cx = (laneX[startLane] + laneX[startLane + 1]) / 2;
+    lastSpawnLane = -2;
+    obstacles.push({
+      type: 'truck',
+      lane: -1,
+      x: cx,
+      y: -h,
+      w: w,
+      h: h,
+      color: '#8a6642'
+    });
+  }
+
+  function spawnBanana() {
+    var choices = [];
+    for (var l = 0; l < LANES; l++) {
+      if (l !== lastSpawnLane) choices.push(l);
+    }
+    var lane = choices[Math.floor(Math.random() * choices.length)];
+    lastSpawnLane = lane;
+    var w = laneWidth * 0.3;
+    obstacles.push({
+      type: 'banana',
+      lane: lane,
+      x: laneX[lane],
+      y: -w + H * 0.22,
+      w: w,
+      h: w,
+      color: '#f5d547'
     });
   }
 
@@ -402,6 +449,37 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
     ctx.fill();
   }
 
+  function drawTruck(cx, cy, w, h, color) {
+    roundRect(ctx, cx - w / 2, cy - h / 2, w, h, h * 0.3);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#ffcf4d';
+    ctx.lineWidth = Math.max(2, h * 0.06);
+    ctx.setLineDash([h * 0.3, h * 0.2]);
+    roundRect(ctx, cx - w / 2, cy - h / 2, w, h, h * 0.3);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    roundRect(ctx, cx - w / 2 + w * 0.08, cy - h / 2 + h * 0.18, w * 0.32, h * 0.64, h * 0.15);
+    ctx.fill();
+    roundRect(ctx, cx + w * 0.04, cy - h / 2 + h * 0.18, w * 0.32, h * 0.64, h * 0.15);
+    ctx.fill();
+  }
+
+  function drawBanana(cx, cy, w) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5d547';
+    ctx.fill();
+    ctx.strokeStyle = '#8a6d1f';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx - w * 0.12, cy - w * 0.12, w * 0.18, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fill();
+  }
+
   var laneLineOffset = 0;
 
   function draw(dt) {
@@ -428,7 +506,9 @@ import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './lead
 
     for (var j = 0; j < obstacles.length; j++) {
       var o = obstacles[j];
-      drawCar(o.x, o.y, o.w, o.h, o.color);
+      if (o.type === 'truck') drawTruck(o.x, o.y, o.w, o.h, o.color);
+      else if (o.type === 'banana') drawBanana(o.x, o.y, o.w);
+      else drawCar(o.x, o.y, o.w, o.h, o.color);
     }
 
     drawCar(player.x, player.y, player.w, player.h, '#4f8cff');
