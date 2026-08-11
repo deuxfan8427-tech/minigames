@@ -26,7 +26,8 @@ var MONEY_DIVISORS = {
   tetris: 8.5,
   'number-baseball': 10,
   reaction: 4.5,
-  'aim-trainer': 5
+  'aim-trainer': 5,
+  'simon-says': 5
 };
 
 export function moneyFromScore(game, score) {

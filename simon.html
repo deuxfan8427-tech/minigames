@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simon Says</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 380px;
+    color: #eee;
+    font-size: 15px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+    width: 340px;
+    max-width: calc(100vw - 20px);
+    background: #0b0b14;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    box-sizing: border-box;
+    padding: 18px;
+  }
+  #simon-board {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 280px;
+    margin: 0 auto;
+  }
+  .simon-btn {
+    height: 120px;
+    border: 4px solid rgba(255,255,255,0.5);
+    border-radius: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .simon-btn[data-index="0"] { background: #ff5f6d; }
+  .simon-btn[data-index="1"] { background: #1dd1a1; }
+  .simon-btn[data-index="2"] { background: #4f8cff; }
+  .simon-btn[data-index="3"] { background: #feca57; }
+  .simon-btn.active {
+    opacity: 1;
+    transform: scale(0.95);
+    filter: brightness(1.5);
+  }
+  #simon-message {
+    min-height: 20px;
+    font-weight: bold;
+    margin: 16px 0 0;
+    text-align: center;
+    color: #ddd;
+    font-size: 14px;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.92);
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  #overlay h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  #versionTag {
+    color: #444;
+    font-size: 10px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>라운드: <span id="roundDisplay">0</span></div>
+    <div>💰 <span id="money">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <div id="simon-board">
+      <button class="simon-btn" data-index="0"></button>
+      <button class="simon-btn" data-index="1"></button>
+      <button class="simon-btn" data-index="2"></button>
+      <button class="simon-btn" data-index="3"></button>
+    </div>
+    <div id="simon-message">이름을 입력하고 시작해주세요</div>
+    <div id="overlay">
+      <h1 id="overlayTitle">Simon Says</h1>
+      <p id="overlayMsg">순서를 기억했다가 똑같이 따라 클릭하세요</p>
+      <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+      <button id="startBtn">시작</button>
+      <div id="leaderboard">
+        <h2>최고 기록 TOP 10</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+  </div>
+  <div id="hint">깜빡이는 순서를 기억했다가 똑같이 눌러보세요</div>
+  <div id="versionTag">v1.1.0 · 2026-08-11 업데이트</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
+(function() {
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var roundDisplay = document.getElementById('roundDisplay');
+  var moneyEl = document.getElementById('money');
+  var message = document.getElementById('simon-message');
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.simon-btn'));
+
+  var GAME_ID = 'simon-says';
+  var LS_NAME_KEY = 'mg_playerName';
+  var playerName = '플레이어';
+
+  var sequence = [];
+  var playerIndex = 0;
+  var playing = false;
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+        refreshMoney();
+      }
+    } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitFinalScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  function wait(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+  }
+
+  function flashButton(index, duration) {
+    var button = buttons[index];
+    button.classList.add('active');
+    setTimeout(function() { button.classList.remove('active'); }, duration);
+  }
+
+  function startGame() {
+    sequence = [];
+    playerIndex = 0;
+    roundDisplay.textContent = '0';
+    overlay.style.display = 'none';
+    nextRound();
+  }
+
+  function nextRound() {
+    sequence.push(Math.floor(Math.random() * 4));
+    playerIndex = 0;
+    roundDisplay.textContent = sequence.length;
+    playing = false;
+    message.textContent = '순서를 기억하세요!';
+    playSequence();
+  }
+
+  async function playSequence() {
+    for (var i = 0; i < sequence.length; i++) {
+      await wait(350);
+      flashButton(sequence[i], 300);
+      await wait(350);
+    }
+    playing = true;
+    message.textContent = '이제 같은 순서로 클릭하세요!';
+  }
+
+  function gameOver() {
+    playing = false;
+    var roundsCompleted = sequence.length - 1;
+    var score = Math.max(0, roundsCompleted * 30);
+
+    message.textContent = '게임 오버! ' + roundsCompleted + '라운드까지 성공';
+    submitFinalScore(playerName, score);
+    showOverlay('게임 오버', roundsCompleted + '라운드까지 성공 · 점수 ' + score, '다시 시작');
+  }
+
+  buttons.forEach(function(button, index) {
+    button.addEventListener('click', function() {
+      if (!playing) return;
+      flashButton(index, 120);
+
+      if (index !== sequence[playerIndex]) {
+        gameOver();
+        return;
+      }
+
+      playerIndex++;
+      if (playerIndex === sequence.length) {
+        playing = false;
+        message.textContent = '정답! 다음 라운드';
+        setTimeout(nextRound, 700);
+      }
+    });
+  });
+
+  startBtn.addEventListener('click', function() {
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
+    startGame();
+  });
+
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  loadName();
+  renderLeaderboard();
+  showOverlay('Simon Says', '순서를 기억했다가 똑같이 따라 클릭하세요', '시작');
+})();
+</script>
+</body>
+</html>
