@@ -340,6 +340,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     '<div class="ms-panel">' +
       '<div class="ms-status">' +
         '<span id="ms-round"></span>' +
+        '<span id="ms-mines">💣 0</span>' +
         '<span id="ms-best"></span>' +
         '<button class="ms-restart" id="ms-restart" type="button">새 게임</button>' +
       '</div>' +
@@ -350,6 +351,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     '</div>';
 
   var boardEl = root.querySelector('#ms-board');
+  var minesEl = root.querySelector('#ms-mines');
   var roundEl = root.querySelector('#ms-round');
   var bestEl = root.querySelector('#ms-best');
   var messageEl = root.querySelector('#ms-message');
@@ -363,11 +365,13 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
   });
 
   function getRoundSettings() {
-    var size = Math.min(6 + round, 12);
+    var size = round + 4;
+    var density = 0.185 - 0.065 / round;
+    var mines = Math.max(1, Math.min(Math.floor(size * size * density), size * size - 1));
     return {
       rows: size,
       cols: size,
-      mines: Math.min(Math.floor(size * size * 0.16) + round - 1, size * size - 1)
+      mines: mines
     };
   }
 
@@ -410,6 +414,9 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
   function renderBoard() {
     boardEl.style.gridTemplateColumns = 'repeat(' + cols + ', var(--cell-size))';
     boardEl.innerHTML = '';
+
+    var flaggedCount = flatBoard().filter(function(c) { return c.mark === 1; }).length;
+    minesEl.textContent = '💣 ' + (mineCount - flaggedCount);
 
     flatBoard().forEach(function(cell) {
       var button = document.createElement('button');
