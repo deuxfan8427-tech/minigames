@@ -258,6 +258,8 @@ import { findItem } from './shopItems.js';
 
   var ballColor = '#ffffff';
   var paddleColor = '#e8e8f5';
+  var ballSparkle = false;
+  var paddleSparkle = false;
 
   function refreshMoney() {
     if (!playerName) return;
@@ -267,8 +269,27 @@ import { findItem } from './shopItems.js';
       var ballItem = findItem(equipped.ball);
       var paddleItem = findItem(equipped.paddle);
       ballColor = ballItem ? ballItem.value : '#ffffff';
+      ballSparkle = ballItem ? !!ballItem.sparkle : false;
       paddleColor = paddleItem ? paddleItem.value : '#e8e8f5';
+      paddleSparkle = paddleItem ? !!paddleItem.sparkle : false;
     });
+  }
+
+  function sparkleColor() {
+    var hue = (Date.now() / 15) % 360;
+    return 'hsl(' + hue + ', 85%, 65%)';
+  }
+
+  function drawSparkleDots(cx, cy, r) {
+    var t = Date.now();
+    var offsets = [[-0.4, -0.3], [0.3, 0.2], [0, -0.5], [0.4, 0.4]];
+    for (var i = 0; i < offsets.length; i++) {
+      var alpha = 0.3 + 0.7 * Math.abs(Math.sin(t / 220 + i * 1.7));
+      ctx.beginPath();
+      ctx.arc(cx + offsets[i][0] * r, cy + offsets[i][1] * r, Math.max(1, r * 0.16), 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha.toFixed(2) + ')';
+      ctx.fill();
+    }
   }
 
   function renderLeaderboard() {
@@ -746,16 +767,18 @@ import { findItem } from './shopItems.js';
     }
 
     // paddle
-    ctx.fillStyle = paddleColor;
+    ctx.fillStyle = paddleSparkle ? sparkleColor() : paddleColor;
     roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, paddle.h / 2);
     ctx.fill();
+    if (paddleSparkle) drawSparkleDots(paddle.x + paddle.w / 2, paddle.y + paddle.h / 2, paddle.h);
 
     // balls
-    ctx.fillStyle = pierceTimer > 0 ? '#ffe066' : ballColor;
     for (var i = 0; i < balls.length; i++) {
       ctx.beginPath();
       ctx.arc(balls[i].x, balls[i].y, balls[i].r, 0, Math.PI * 2);
+      ctx.fillStyle = pierceTimer > 0 ? '#ffe066' : (ballSparkle ? sparkleColor() : ballColor);
       ctx.fill();
+      if (ballSparkle && pierceTimer <= 0) drawSparkleDots(balls[i].x, balls[i].y, balls[i].r);
     }
 
     // falling items

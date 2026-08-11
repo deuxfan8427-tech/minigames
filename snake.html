@@ -197,6 +197,7 @@ import { findItem } from './shopItems.js';
 
   var snakeHeadColor = '#7fe0a8';
   var snakeBodyColor = '#4f8cff';
+  var snakeSparkle = false;
 
   function refreshMoney() {
     if (!playerName) return;
@@ -206,7 +207,13 @@ import { findItem } from './shopItems.js';
       var snakeItem = findItem(equipped.snake);
       snakeHeadColor = snakeItem ? snakeItem.headColor : '#7fe0a8';
       snakeBodyColor = snakeItem ? snakeItem.bodyColor : '#4f8cff';
+      snakeSparkle = snakeItem ? !!snakeItem.sparkle : false;
     });
+  }
+
+  function sparkleColor(shift) {
+    var hue = (Date.now() / 15 + (shift || 0)) % 360;
+    return 'hsl(' + hue + ', 85%, 65%)';
   }
 
   function renderLeaderboard() {
@@ -418,9 +425,22 @@ import { findItem } from './shopItems.js';
     ctx.fill();
 
     for (var i = 0; i < snake.length; i++) {
-      ctx.fillStyle = i === 0 ? snakeHeadColor : snakeBodyColor;
+      if (snakeSparkle) {
+        ctx.fillStyle = sparkleColor(i * 20);
+      } else {
+        ctx.fillStyle = i === 0 ? snakeHeadColor : snakeBodyColor;
+      }
       roundRect(ctx, snake[i].x * cell + 1, snake[i].y * cell + 1, cell - 2, cell - 2, 3);
       ctx.fill();
+      if (snakeSparkle && i % 3 === 0) {
+        var scx = snake[i].x * cell + cell / 2;
+        var scy = snake[i].y * cell + cell / 2;
+        var tw = 0.3 + 0.7 * Math.abs(Math.sin(Date.now() / 220 + i));
+        ctx.beginPath();
+        ctx.arc(scx, scy, Math.max(1, cell * 0.12), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,' + tw.toFixed(2) + ')';
+        ctx.fill();
+      }
     }
   }
 

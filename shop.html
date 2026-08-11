@@ -104,6 +104,28 @@
   .itemCard.equipped {
     border-color: #ffd700;
   }
+  .itemCard.rare {
+    border-color: #c56cf0;
+    background: linear-gradient(160deg, #241c3a, #1c1c2a);
+  }
+  .itemCard.rare.equipped {
+    border-color: #ffd700;
+  }
+  .rareBadge {
+    display: inline-block;
+    font-size: 10px;
+    color: #1c1c2a;
+    background: linear-gradient(90deg, #ff6ec7, #c56cf0, #6ec7ff, #ff6ec7);
+    background-size: 300% 100%;
+    animation: rareShift 2.5s linear infinite;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+  @keyframes rareShift {
+    to { background-position: 300% 0; }
+  }
   .swatch {
     width: 44px;
     height: 44px;
@@ -120,6 +142,26 @@
     width: 22px;
     height: 44px;
     top: 0;
+  }
+  .swatch.sparkle {
+    background: conic-gradient(from 0deg, #ff6ec7, #ffd700, #6ec7ff, #c56cf0, #ff6ec7);
+    background-size: 200% 200%;
+    animation: sparkleSpin 3s linear infinite;
+    border-color: rgba(255,255,255,0.5);
+    position: relative;
+    overflow: hidden;
+  }
+  .swatch.sparkle::after {
+    content: '✨';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  @keyframes sparkleSpin {
+    to { transform: rotate(360deg); }
   }
   .itemName {
     font-size: 13px;
@@ -219,6 +261,9 @@ function setStatus(msg) {
 }
 
 function swatchHtml(item) {
+  if (item.sparkle) {
+    return '<div class="swatch sparkle"></div>';
+  }
   if (item.category === 'snake') {
     return '<div class="swatch dual" style="background:' + item.bodyColor + '">' +
       '<div class="half" style="left:22px;background:' + item.headColor + ';border-radius:0 22px 22px 0;"></div>' +
@@ -254,9 +299,10 @@ function render() {
         var isEquipped = equippedId === item.id;
 
         var card = document.createElement('div');
-        card.className = 'itemCard' + (isEquipped ? ' equipped' : '');
+        card.className = 'itemCard' + (item.rare ? ' rare' : '') + (isEquipped ? ' equipped' : '');
 
-        var html = swatchHtml(item);
+        var html = item.rare ? '<div class="rareBadge">RARE</div>' : '';
+        html += swatchHtml(item);
         html += '<div class="itemName">' + item.name + '</div>';
         html += '<div class="itemPrice">' + (item.price === 0 ? '기본' : '💰 ' + item.price) + '</div>';
         card.innerHTML = html;

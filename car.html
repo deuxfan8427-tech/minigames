@@ -196,6 +196,7 @@ import { findItem } from './shopItems.js';
   }
 
   var playerCarColor = '#4f8cff';
+  var playerCarSparkle = false;
 
   function refreshMoney() {
     if (!playerName) return;
@@ -204,7 +205,25 @@ import { findItem } from './shopItems.js';
       var equipped = w.equipped || {};
       var carItem = findItem(equipped.car);
       playerCarColor = carItem ? carItem.value : '#4f8cff';
+      playerCarSparkle = carItem ? !!carItem.sparkle : false;
     });
+  }
+
+  function sparkleColor() {
+    var hue = (Date.now() / 15) % 360;
+    return 'hsl(' + hue + ', 85%, 65%)';
+  }
+
+  function drawSparkleDots(cx, cy, r) {
+    var t = Date.now();
+    var offsets = [[-0.4, -0.3], [0.3, 0.2], [0, -0.5], [0.4, 0.4]];
+    for (var i = 0; i < offsets.length; i++) {
+      var alpha = 0.3 + 0.7 * Math.abs(Math.sin(t / 220 + i * 1.7));
+      ctx.beginPath();
+      ctx.arc(cx + offsets[i][0] * r, cy + offsets[i][1] * r, Math.max(1, r * 0.16), 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha.toFixed(2) + ')';
+      ctx.fill();
+    }
   }
 
   function renderLeaderboard() {
@@ -550,7 +569,8 @@ import { findItem } from './shopItems.js';
       else drawCar(o.x, o.y, o.w, o.h, o.color);
     }
 
-    drawCar(player.x, player.y, player.w, player.h, playerCarColor);
+    drawCar(player.x, player.y, player.w, player.h, playerCarSparkle ? sparkleColor() : playerCarColor);
+    if (playerCarSparkle) drawSparkleDots(player.x, player.y, player.w);
   }
 
   var lastTime = 0;
