@@ -177,6 +177,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var overlay = document.getElementById('overlay');
   var overlayTitle = document.getElementById('overlayTitle');
@@ -210,10 +211,15 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     } catch (e) {}
   }
 
+  var targetColor = '#ff5f6d';
+
   function refreshMoney() {
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var themeItem = findItem(equipped.aim);
+      targetColor = themeItem ? themeItem.value : '#ff5f6d';
     });
   }
 
@@ -266,6 +272,8 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
 
     var target = document.createElement('div');
     target.className = 'aim-target';
+    target.style.background = targetColor;
+    target.style.boxShadow = '0 0 12px ' + targetColor;
 
     var rect = field.getBoundingClientRect();
     var x = 30 + Math.random() * Math.max(1, rect.width - 60);

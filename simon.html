@@ -197,6 +197,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var overlay = document.getElementById('overlay');
   var overlayTitle = document.getElementById('overlayTitle');
@@ -232,6 +233,10 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var themeItem = findItem(equipped.simon);
+      var colors = themeItem ? themeItem.colors : ['#ff5f6d', '#1dd1a1', '#4f8cff', '#feca57'];
+      buttons.forEach(function(btn, i) { btn.style.background = colors[i]; });
     });
   }
 

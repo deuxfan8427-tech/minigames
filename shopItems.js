@@ -21,14 +21,38 @@ export const SHOP_ITEMS = [
   { id: 'snake_purple', category: 'snake', name: '퍼플 뱀', price: 700, headColor: '#e0aaff', bodyColor: '#9d4edd' },
   { id: 'snake_fire', category: 'snake', name: '파이어 뱀', price: 1100, headColor: '#ffd60a', bodyColor: '#ff6b35' },
   { id: 'snake_gold', category: 'snake', name: '골드 뱀', price: 1400, headColor: '#fff3b0', bodyColor: '#ffd700' },
-  { id: 'snake_galaxy', category: 'snake', name: '갤럭시 반짝이 뱀', price: 12000, headColor: '#e6c6ff', bodyColor: '#c56cf0', rare: true, sparkle: true }
+  { id: 'snake_galaxy', category: 'snake', name: '갤럭시 반짝이 뱀', price: 12000, headColor: '#e6c6ff', bodyColor: '#c56cf0', rare: true, sparkle: true },
+
+  { id: 'reaction_default', category: 'reaction', name: '기본 테마', price: 0, value: '#1dd1a1' },
+  { id: 'reaction_cyan', category: 'reaction', name: '시안 테마', price: 600, value: '#00d2d3' },
+  { id: 'reaction_purple', category: 'reaction', name: '퍼플 테마', price: 900, value: '#a29bfe' },
+  { id: 'reaction_gold', category: 'reaction', name: '골드 테마', price: 1200, value: '#ffd700' },
+
+  { id: 'aim_default', category: 'aim', name: '기본 타겟', price: 0, value: '#ff5f6d' },
+  { id: 'aim_blue', category: 'aim', name: '블루 타겟', price: 600, value: '#4f8cff' },
+  { id: 'aim_purple', category: 'aim', name: '퍼플 타겟', price: 900, value: '#a29bfe' },
+  { id: 'aim_gold', category: 'aim', name: '골드 타겟', price: 1200, value: '#ffd700' },
+
+  { id: 'simon_default', category: 'simon', name: '기본 팔레트', price: 0, colors: ['#ff5f6d', '#1dd1a1', '#4f8cff', '#feca57'] },
+  { id: 'simon_pastel', category: 'simon', name: '파스텔 팔레트', price: 600, colors: ['#ffb3ba', '#baffc9', '#bae1ff', '#ffffba'] },
+  { id: 'simon_neon', category: 'simon', name: '네온 팔레트', price: 900, colors: ['#ff2d95', '#39ff14', '#00d2d3', '#feca57'] },
+  { id: 'simon_gold', category: 'simon', name: '골드 팔레트', price: 1200, colors: ['#ffd700', '#ffed4e', '#daa520', '#fff3b0'] },
+
+  { id: 'mine_default', category: 'mine', name: '기본 테마', price: 0, value: '#2c2c40' },
+  { id: 'mine_ice', category: 'mine', name: '아이스 테마', price: 600, value: '#1e3a5f' },
+  { id: 'mine_forest', category: 'mine', name: '포레스트 테마', price: 900, value: '#1e4620' },
+  { id: 'mine_gold', category: 'mine', name: '골드 테마', price: 1200, value: '#4a3c1e' }
 ];
 
 export const CATEGORY_LABELS = {
   ball: '🧱 벽돌깨기 - 공',
   paddle: '🧱 벽돌깨기 - 막대',
   car: '🚗 자동차 피하기',
-  snake: '🐍 스네이크'
+  snake: '🐍 스네이크',
+  reaction: '⚡ 반응속도 테스트',
+  aim: '🎯 에임 트레이너',
+  simon: '🧠 Simon Says',
+  mine: '💣 지뢰찾기'
 };
 
 export function itemsByCategory(category) {

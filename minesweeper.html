@@ -186,9 +186,13 @@
     margin: auto;
     padding: 2px;
   }
+  #mobile-minesweeper {
+    --cell-bg: #2c2c40;
+  }
   .ms-cell {
     width: var(--cell-size);
     height: var(--cell-size);
+    background: var(--cell-bg);
     display: grid;
     place-items: center;
     border: 0;
@@ -248,6 +252,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var overlay = document.getElementById('overlay');
   var overlayTitle = document.getElementById('overlayTitle');
@@ -277,6 +282,10 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var themeItem = findItem(equipped.mine);
+      var cellBg = themeItem ? themeItem.value : '#2c2c40';
+      document.getElementById('mobile-minesweeper').style.setProperty('--cell-bg', cellBg);
     });
   }
 

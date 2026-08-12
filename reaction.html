@@ -202,6 +202,7 @@
 <script type="module">
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
+import { findItem } from './shopItems.js';
 (function() {
   var overlay = document.getElementById('overlay');
   var overlayTitle = document.getElementById('overlayTitle');
@@ -244,10 +245,15 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     } catch (e) {}
   }
 
+  var goColor = '#1dd1a1';
+
   function refreshMoney() {
     if (!playerName) return;
     getWallet(playerName).then(function(w) {
       moneyEl.textContent = w.money;
+      var equipped = w.equipped || {};
+      var themeItem = findItem(equipped.reaction);
+      goColor = themeItem ? themeItem.value : '#1dd1a1';
     });
   }
 
@@ -304,15 +310,18 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     overlay.style.display = 'none';
     area.textContent = 'START';
     area.className = '';
+    area.style.background = '';
   }
 
   function scheduleGo() {
     area.className = 'rt-wait';
+    area.style.background = '';
     area.textContent = '초록색이 될 때까지 기다리세요...';
     gameState = 'waiting';
     timer = setTimeout(function() {
       gameState = 'ready';
       area.className = 'rt-go';
+      area.style.background = goColor;
       area.textContent = 'CLICK!';
       startTime = performance.now();
     }, 1000 + Math.random() * 2500);
@@ -322,6 +331,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     var avg = Math.round(scores.reduce(function(a, b) { return a + b; }, 0) / scores.length);
     gameState = 'locked';
     area.className = '';
+    area.style.background = '';
     area.textContent = '먼저 이름을 입력해주세요';
 
     var score = Math.max(0, Math.round(600 - avg));
@@ -341,6 +351,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
       clearTimeout(timer);
       gameState = 'idle';
       area.className = '';
+      area.style.background = '';
       area.textContent = 'START';
       result.textContent = '너무 빨랐어요! 다시 클릭해서 재시도하세요.';
       return;
