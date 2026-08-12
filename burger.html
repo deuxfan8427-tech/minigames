@@ -401,10 +401,11 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     moving.style.height = h + 'px';
     moving.dataset.width = width;
 
-    x = 10;
+    var startFromLeft = Math.random() < 0.5;
+    x = startFromLeft ? 10 : 90;
+    direction = startFromLeft ? 1 : -1;
     moving.style.left = x + '%';
     positionMoving(h);
-    direction = 1;
   }
 
   function animate() {
@@ -418,7 +419,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
 
   function startGame() {
     layers = 0;
-    speed = 0.35;
+    speed = 0.6;
     direction = 1;
     x = 50;
     stackTopY = 0;
@@ -431,7 +432,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
 
     var base = { type: 'bun-bottom' };
     var baseWidth = 200;
-    addIngredient(base, 0, 0, baseWidth);
+    addIngredient(base, stack.clientWidth / 2, 0, baseWidth);
     stackTopY = ingredientHeight('bun-bottom');
     layers = 1;
     heightEl.textContent = layers - 1;
@@ -470,7 +471,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     layers++;
     heightEl.textContent = layers - 1;
 
-    speed = Math.min(1.2, 0.35 + layers * 0.025);
+    speed = Math.min(3.0, 0.6 + layers * 0.045);
 
     createMovingIngredient();
     animate();
