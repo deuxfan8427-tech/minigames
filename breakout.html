@@ -95,6 +95,20 @@
   .linkBtn:active {
     background: transparent !important;
   }
+  .recordBanner {
+    background: linear-gradient(90deg, #ff6ec7, #ffd700, #6ec7ff, #ff6ec7);
+    background-size: 300% 100%;
+    animation: recordShift 2.5s linear infinite;
+    color: #1c1c2a;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  @keyframes recordShift {
+    to { background-position: 300% 0; }
+  }
   #itemInfoList {
     width: 100%;
     max-width: 280px;
@@ -197,6 +211,7 @@
     <canvas id="game"></canvas>
     <div id="overlay">
       <div id="mainPanel">
+        <div id="recordBanner" class="recordBanner" style="display:none;"></div>
         <h1 id="overlayTitle">벽돌깨기</h1>
         <p id="overlayMsg">패들을 움직여 공을 튕겨 벽돌을 모두 깨보세요</p>
         <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
@@ -223,11 +238,13 @@
 import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
 import { moneyFromScore, addMoney, getWallet } from './economy.js';
 import { findItem } from './shopItems.js';
+import { checkAndUpdateRecord } from './records.js';
 (function() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
   var overlay = document.getElementById('overlay');
   var mainPanel = document.getElementById('mainPanel');
+  var recordBanner = document.getElementById('recordBanner');
   var itemInfoPanel = document.getElementById('itemInfoPanel');
   var itemInfoList = document.getElementById('itemInfoList');
   var showItemInfoBtn = document.getElementById('showItemInfoBtn');
@@ -320,9 +337,25 @@ import { findItem } from './shopItems.js';
     });
   }
 
+  function showRecordBanner(isNewNumberOne, isPersonalBest) {
+    if (isNewNumberOne) {
+      recordBanner.textContent = '🏆 새로운 1위 기록입니다!';
+    } else if (isPersonalBest) {
+      recordBanner.textContent = '🎉 개인 최고 기록 갱신!';
+    }
+    recordBanner.style.display = 'block';
+  }
+
   function submitScore(name, finalScore) {
+    var rec = checkAndUpdateRecord(GAME_ID, finalScore);
     lbSubmitScore(GAME_ID, name, finalScore).then(function() {
       renderLeaderboard();
+      return lbFetchTop10(GAME_ID);
+    }).then(function(list) {
+      var isNewNumberOne = list.length > 0 && list[0].name === name && list[0].score === finalScore;
+      if (isNewNumberOne || rec.isPersonalBest) {
+        showRecordBanner(isNewNumberOne, rec.isPersonalBest);
+      }
     });
     var earned = moneyFromScore(GAME_ID, finalScore);
     if (earned > 0) {
@@ -545,6 +578,7 @@ import { findItem } from './shopItems.js';
     overlay.style.display = 'flex';
     mainPanel.style.display = 'flex';
     itemInfoPanel.style.display = 'none';
+    recordBanner.style.display = 'none';
   }
 
   function renderItemInfo() {
