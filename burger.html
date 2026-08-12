@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>버거 스택</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #14141f;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 380px;
+    color: #eee;
+    font-size: 15px;
+    padding: 6px 10px;
+    box-sizing: border-box;
+  }
+  #stage {
+    position: relative;
+    width: 340px;
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+  }
+  #burger-game {
+    position: relative;
+    width: 100%;
+    height: 460px;
+    overflow: hidden;
+    background: linear-gradient(#1c2b3a, #0b0b14);
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    touch-action: none;
+  }
+  #burger-stack {
+    position: absolute;
+    left: 50%;
+    bottom: 35px;
+    width: 220px;
+  }
+  #burger-moving {
+    position: absolute;
+    height: 42px;
+    left: 50%;
+    top: 70px;
+    transform: translateX(-50%);
+    z-index: 5;
+  }
+  .burger-ingredient {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+  }
+  .bun-top {
+    height: 48px;
+    background: #d99032;
+    border-radius: 70px 70px 15px 15px;
+    border: 3px solid #8c531d;
+  }
+  .bun-bottom {
+    height: 35px;
+    background: #d99032;
+    border-radius: 10px 10px 25px 25px;
+    border: 3px solid #8c531d;
+  }
+  .patty {
+    height: 34px;
+    background: #70401f;
+    border-radius: 10px;
+    border: 3px solid #482513;
+  }
+  .cheese {
+    height: 15px;
+    background: #ffd43b;
+    border: 2px solid #e0a900;
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 80% 100%, 60% 70%, 40% 100%, 20% 70%, 0 100%);
+  }
+  .lettuce {
+    height: 17px;
+    background: #65b94a;
+    border: 2px solid #3d842d;
+    border-radius: 50%;
+  }
+  .tomato {
+    height: 20px;
+    background: #e7473c;
+    border: 2px solid #b52c25;
+    border-radius: 8px;
+  }
+  .egg {
+    height: 25px;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+  }
+  .egg::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: #ffbf00;
+    border-radius: 50%;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+  #burger-message {
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.92);
+    border-radius: 12px;
+    color: #fff;
+    text-align: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  #overlay h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+  }
+  #overlay p {
+    margin: 0 0 18px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  #overlay button {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #overlay button:active {
+    background: #3a72e0;
+  }
+  #nameInput {
+    background: #1c1c2a;
+    border: 1px solid #3a3a52;
+    color: #fff;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
+    width: 160px;
+  }
+  #nameInput:focus {
+    outline: none;
+    border-color: #4f8cff;
+  }
+  #leaderboard {
+    margin-top: 20px;
+    width: 200px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #leaderboard h2 {
+    font-size: 13px;
+    color: #999;
+    margin: 0 0 8px;
+    font-weight: normal;
+  }
+  #leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+  }
+  #leaderboardList li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+    color: #ddd;
+  }
+  #leaderboardList li:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+  }
+  #hint {
+    color: #777;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  #versionTag {
+    color: #444;
+    font-size: 10px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>높이: <span id="height">0</span>층</div>
+    <div>💰 <span id="money">0</span></div>
+    <div><a href="index.html" style="color:#777;text-decoration:none;">← 목록</a></div>
+  </div>
+  <div id="stage">
+    <div id="burger-game">
+      <div id="burger-stack"></div>
+      <div id="burger-moving"></div>
+      <div id="overlay">
+        <h1 id="overlayTitle">🍔 버거 스택</h1>
+        <p id="overlayMsg">화면을 탭해서 재료를 쌓으세요. 많이 겹칠수록 안정적이에요</p>
+        <input id="nameInput" type="text" maxlength="8" placeholder="이름 입력">
+        <button id="startBtn">시작</button>
+        <div id="leaderboard">
+          <h2>최고 기록 TOP 10</h2>
+          <ol id="leaderboardList"></ol>
+        </div>
+      </div>
+    </div>
+    <div id="burger-message"></div>
+  </div>
+  <div id="hint">화면 아무 곳이나 탭해서 재료를 떨어뜨리세요</div>
+  <div id="versionTag">v1.1.0 · 2026-08-11 업데이트</div>
+</div>
+
+<script type="module">
+import { submitScore as lbSubmitScore, fetchTop10 as lbFetchTop10 } from './leaderboard.js';
+import { moneyFromScore, addMoney, getWallet } from './economy.js';
+(function() {
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayMsg = document.getElementById('overlayMsg');
+  var startBtn = document.getElementById('startBtn');
+  var nameInput = document.getElementById('nameInput');
+  var leaderboardList = document.getElementById('leaderboardList');
+  var heightEl = document.getElementById('height');
+  var moneyEl = document.getElementById('money');
+  var game = document.getElementById('burger-game');
+  var moving = document.getElementById('burger-moving');
+  var stack = document.getElementById('burger-stack');
+  var message = document.getElementById('burger-message');
+
+  var GAME_ID = 'burger-stack';
+  var LS_NAME_KEY = 'mg_playerName';
+  var LS_BEST_KEY = 'burger_personalBest';
+  var playerName = '플레이어';
+
+  function loadName() {
+    try {
+      var saved = localStorage.getItem(LS_NAME_KEY);
+      if (saved) {
+        playerName = saved;
+        nameInput.value = saved;
+        refreshMoney();
+      }
+    } catch (e) {}
+  }
+
+  function refreshMoney() {
+    if (!playerName) return;
+    getWallet(playerName).then(function(w) {
+      moneyEl.textContent = w.money;
+    });
+  }
+
+  function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    var loading = document.createElement('li');
+    loading.textContent = '불러오는 중...';
+    leaderboardList.appendChild(loading);
+
+    lbFetchTop10(GAME_ID).then(function(list) {
+      leaderboardList.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('li');
+        empty.textContent = '아직 기록이 없어요';
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var li = document.createElement('li');
+        var rank = document.createElement('span');
+        rank.textContent = (i + 1) + '. ' + list[i].name;
+        var pts = document.createElement('span');
+        pts.textContent = list[i].score;
+        li.appendChild(rank);
+        li.appendChild(pts);
+        leaderboardList.appendChild(li);
+      }
+    });
+  }
+
+  function submitFinalScore(name, finalScore) {
+    lbSubmitScore(GAME_ID, name, finalScore).then(function() {
+      renderLeaderboard();
+    });
+    var earned = moneyFromScore(GAME_ID, finalScore);
+    if (earned > 0) {
+      addMoney(name, earned).then(function() { refreshMoney(); });
+    }
+  }
+
+  function showOverlay(title, msg, btnText) {
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    startBtn.textContent = btnText;
+    overlay.style.display = 'flex';
+  }
+
+  // ---- burger stack game logic ----
+  var CONTAINER_H = 460;
+  var BOTTOM_ANCHOR = 35;
+  var TOP_MARGIN = 70;
+  var VIEW_ROOM = CONTAINER_H - BOTTOM_ANCHOR - TOP_MARGIN - 40;
+
+  var INGREDIENTS = [
+    { type: 'patty', min: 130, max: 220 },
+    { type: 'cheese', min: 140, max: 230 },
+    { type: 'lettuce', min: 150, max: 225 },
+    { type: 'tomato', min: 130, max: 210 },
+    { type: 'egg', min: 120, max: 200 },
+    { type: 'bun-top', min: 150, max: 230 }
+  ];
+
+  var layers = 0;
+  var personalBest = Number(localStorage.getItem(LS_BEST_KEY)) || 0;
+  var playing = false;
+  var direction = 1;
+  var x = 50;
+  var speed = 0.35;
+  var animFrame = null;
+  var stackTopY = 0;
+  var movingIngredient = null;
+
+  function ingredientHeight(type) {
+    switch (type) {
+      case 'bun-top': return 48;
+      case 'bun-bottom': return 35;
+      case 'patty': return 34;
+      case 'cheese': return 15;
+      case 'lettuce': return 17;
+      case 'tomato': return 20;
+      case 'egg': return 25;
+      default: return 30;
+    }
+  }
+
+  function updateCamera() {
+    var cameraOffset = Math.max(0, stackTopY - VIEW_ROOM);
+    stack.style.transform = 'translateX(-50%) translateY(' + cameraOffset + 'px)';
+    return cameraOffset;
+  }
+
+  function positionMoving(pieceHeight) {
+    var cameraOffset = updateCamera();
+    var screenTopOfStack = CONTAINER_H - BOTTOM_ANCHOR - stackTopY + cameraOffset;
+    var top = Math.max(TOP_MARGIN, screenTopOfStack - 40 - pieceHeight);
+    moving.style.top = top + 'px';
+  }
+
+  function addIngredient(ingredient, centerPx, bottomPx, width) {
+    var el = document.createElement('div');
+    el.className = 'burger-ingredient ' + ingredient.type;
+    el.style.width = width + 'px';
+    el.style.height = ingredientHeight(ingredient.type) + 'px';
+    el.style.bottom = bottomPx + 'px';
+    el.style.left = centerPx + 'px';
+    stack.appendChild(el);
+  }
+
+  function createMovingIngredient() {
+    var ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
+    movingIngredient = ingredient;
+    moving.className = 'burger-ingredient ' + ingredient.type;
+    var width = ingredient.min + Math.random() * (ingredient.max - ingredient.min);
+    var h = ingredientHeight(ingredient.type);
+    moving.style.width = width + 'px';
+    moving.style.height = h + 'px';
+    moving.dataset.width = width;
+
+    x = 10;
+    moving.style.left = x + '%';
+    positionMoving(h);
+    direction = 1;
+  }
+
+  function animate() {
+    if (!playing) return;
+    x += speed * direction;
+    if (x >= 90) { x = 90; direction = -1; }
+    if (x <= 10) { x = 10; direction = 1; }
+    moving.style.left = x + '%';
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  function startGame() {
+    layers = 0;
+    speed = 0.35;
+    direction = 1;
+    x = 50;
+    stackTopY = 0;
+    playing = true;
+
+    heightEl.textContent = 0;
+    message.textContent = '';
+    stack.innerHTML = '';
+    stack.style.transform = 'translateX(-50%) translateY(0px)';
+
+    var base = { type: 'bun-bottom' };
+    var baseWidth = 200;
+    addIngredient(base, 0, 0, baseWidth);
+    stackTopY = ingredientHeight('bun-bottom');
+    layers = 1;
+    heightEl.textContent = layers - 1;
+
+    createMovingIngredient();
+    overlay.style.display = 'none';
+    cancelAnimationFrame(animFrame);
+    animate();
+  }
+
+  function dropIngredient() {
+    if (!playing) return;
+
+    cancelAnimationFrame(animFrame);
+
+    var movingRect = moving.getBoundingClientRect();
+    var stackRect = stack.getBoundingClientRect();
+    var previous = stack.lastElementChild;
+    if (!previous) return;
+    var previousRect = previous.getBoundingClientRect();
+
+    var overlapLeft = Math.max(movingRect.left, previousRect.left);
+    var overlapRight = Math.min(movingRect.right, previousRect.right);
+    var overlap = overlapRight - overlapLeft;
+
+    if (overlap < 25) {
+      gameOver();
+      return;
+    }
+
+    var center = (overlapLeft + overlapRight) / 2;
+    var centerRelative = center - stackRect.left;
+
+    addIngredient(movingIngredient, centerRelative, stackTopY, overlap);
+    stackTopY += ingredientHeight(movingIngredient.type);
+    layers++;
+    heightEl.textContent = layers - 1;
+
+    speed = Math.min(1.2, 0.35 + layers * 0.025);
+
+    createMovingIngredient();
+    animate();
+  }
+
+  game.addEventListener('click', function(e) {
+    if (e.target === startBtn || e.target === nameInput || e.target.closest('#overlay')) return;
+    dropIngredient();
+  });
+
+  function gameOver() {
+    playing = false;
+    cancelAnimationFrame(animFrame);
+
+    var stacked = layers - 1;
+    if (stacked > personalBest) {
+      personalBest = stacked;
+      try { localStorage.setItem(LS_BEST_KEY, personalBest); } catch (e) {}
+    }
+
+    var score = Math.max(0, stacked * 20);
+    submitFinalScore(playerName, score);
+    message.textContent = '';
+    showOverlay('게임 오버', stacked + '층까지 쌓았어요 (개인 최고 ' + personalBest + '층) · 점수 ' + score, '다시 시작');
+  }
+
+  startBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var name = nameInput.value.trim().slice(0, 8);
+    if (!name) name = '플레이어';
+    playerName = name;
+    try { localStorage.setItem(LS_NAME_KEY, playerName); } catch (e) {}
+    refreshMoney();
+    startGame();
+  });
+
+  nameInput.addEventListener('click', function(e) { e.stopPropagation(); });
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  loadName();
+  renderLeaderboard();
+  showOverlay('🍔 버거 스택', '화면을 탭해서 재료를 쌓으세요. 많이 겹칠수록 안정적이에요', '시작');
+})();
+</script>
+</body>
+</html>
