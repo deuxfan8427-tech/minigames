@@ -454,7 +454,6 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     event.preventDefault();
 
     activeCell = getCell(event.currentTarget);
-    if (activeCell.open) return;
 
     longPressTriggered = false;
     if (event.currentTarget.setPointerCapture) {
@@ -463,9 +462,26 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
 
     longPressTimer = setTimeout(function() {
       longPressTriggered = true;
-      openCell(activeCell);
+      if (activeCell.open) {
+        chordCell(activeCell);
+      } else {
+        openCell(activeCell);
+      }
       cancelPress();
     }, LONG_PRESS_MS);
+  }
+
+  function chordCell(cell) {
+    if (ended || !cell.open || cell.around === 0) return;
+    var around = neighbors(cell);
+    var flagged = around.filter(function(n) { return n.mark === 1; }).length;
+    if (flagged !== cell.around) return;
+
+    for (var i = 0; i < around.length; i++) {
+      if (ended) break;
+      var n = around[i];
+      if (!n.open && n.mark !== 1) openCell(n);
+    }
   }
 
   function onPointerUp(event) {

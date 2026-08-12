@@ -271,7 +271,7 @@ import { findItem } from './shopItems.js';
 
   var state = 'idle'; // idle | playing | over
   var score = 0;
-  var player, obstacles, elapsedMs, spawnTimer, obstacleSpeed, spawnInterval, lastSpawnLane;
+  var player, obstacles, elapsedMs, spawnTimer, obstacleSpeed, spawnInterval;
 
   var CAR_COLORS = ['#ff5f6d', '#feca57', '#1dd1a1', '#48dbfb', '#a29bfe'];
 
@@ -327,7 +327,6 @@ import { findItem } from './shopItems.js';
     spawnTimer = 0;
     obstacleSpeed = H * 0.18;
     spawnInterval = 1500;
-    lastSpawnLane = -1;
 
     state = 'playing';
     overlay.style.display = 'none';
@@ -382,24 +381,46 @@ import { findItem } from './shopItems.js';
     if (e.key === 'Enter') startBtn.click();
   });
 
+  function coveredLanes() {
+    var covered = [false, false, false];
+    for (var i = 0; i < obstacles.length; i++) {
+      var o = obstacles[i];
+      if (o.y - o.h / 2 > H) continue; // already past the player, irrelevant
+      var left = o.x - o.w / 2, right = o.x + o.w / 2;
+      for (var lane = 0; lane < LANES; lane++) {
+        if (laneX[lane] > left && laneX[lane] < right) covered[lane] = true;
+      }
+    }
+    return covered;
+  }
+
   function spawnObstacle() {
+    var covered = coveredLanes();
+    var freeLanes = [];
+    for (var l = 0; l < LANES; l++) if (!covered[l]) freeLanes.push(l);
+    // never spawn if doing so would leave zero lanes open -- wait for room to clear instead
+    if (freeLanes.length <= 1) return;
+
+    // a truck occupies 2 lanes, so it may only appear when the whole screen is
+    // currently clear -- otherwise it could combine with an existing obstacle
+    // in the remaining lane and block all 3 at once.
+    var canTruck = freeLanes.length === LANES;
+
     var roll = Math.random();
-    if (roll < 0.08) {
-      spawnTruck();
-    } else if (roll < 0.16) {
-      spawnBanana();
+    if (canTruck && roll < 0.08) {
+      var startLane = Math.floor(Math.random() * (LANES - 1));
+      spawnTruck(startLane);
     } else {
-      spawnCar();
+      var lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+      if (roll < 0.16) {
+        spawnBanana(lane);
+      } else {
+        spawnCar(lane);
+      }
     }
   }
 
-  function spawnCar() {
-    var choices = [];
-    for (var l = 0; l < LANES; l++) {
-      if (l !== lastSpawnLane) choices.push(l);
-    }
-    var lane = choices[Math.floor(Math.random() * choices.length)];
-    lastSpawnLane = lane;
+  function spawnCar(lane) {
     var w = laneWidth * 0.48;
     var h = w * 1.6;
     obstacles.push({
@@ -413,12 +434,10 @@ import { findItem } from './shopItems.js';
     });
   }
 
-  function spawnTruck() {
-    var startLane = Math.floor(Math.random() * (LANES - 1));
+  function spawnTruck(startLane) {
     var w = laneWidth * 1.9;
     var h = w * 0.5;
     var cx = (laneX[startLane] + laneX[startLane + 1]) / 2;
-    lastSpawnLane = -2;
     obstacles.push({
       type: 'truck',
       lane: -1,
@@ -430,13 +449,7 @@ import { findItem } from './shopItems.js';
     });
   }
 
-  function spawnBanana() {
-    var choices = [];
-    for (var l = 0; l < LANES; l++) {
-      if (l !== lastSpawnLane) choices.push(l);
-    }
-    var lane = choices[Math.floor(Math.random() * choices.length)];
-    lastSpawnLane = lane;
+  function spawnBanana(lane) {
     var w = laneWidth * 0.3;
     obstacles.push({
       type: 'banana',

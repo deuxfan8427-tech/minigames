@@ -313,7 +313,7 @@ import { moneyFromScore, addMoney, getWallet } from './economy.js';
     if (currentTarget) { currentTarget.remove(); currentTarget = null; }
 
     var avg = hits > 0 ? Math.round(totalReaction / hits) : 0;
-    var bonus = hits > 0 ? Math.max(0, Math.round((500 - avg) / 5)) : 0;
+    var bonus = hits > 0 ? Math.round(Math.max(0, (500 - avg) / 5) / 10) * 10 : 0;
     var score = hits * 10 + bonus;
 
     submitFinalScore(playerName, score);
